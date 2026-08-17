@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Artech">
+  <rect width="64" height="64" rx="16" fill="#050505"/>
+  <text
+    x="32"
+    y="47"
+    fill="#f7f7f7"
+    font-family="Inter, Arial, sans-serif"
+    font-size="45"
+    font-weight="500"
+    text-anchor="middle"
+  >λ</text>
+</svg>

@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# local env files
+.env*
+
+# logs
+*.log
+
+# local QA artifacts
+artifacts-*.png
+visual-*.png
+design-artifacts/qa/**/*.png
+design-artifacts/archive/logs/
+design-artifacts/archive/video/*.mp4
+
+# typeScript
+*.tsbuildinfo
+
+# system
+.DS_Store
+Thumbs.db

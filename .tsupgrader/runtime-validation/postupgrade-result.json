@@ -1,0 +1,59 @@
+{
+  "planHash": "36c42498ced03650475a496bc2d875f28bc1ee1080cfbfea3bffa803b73d655f",
+  "phase": "postupgrade",
+  "recordedAtUtc": "2026-08-17T21:16:02.3865603Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 2316,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "typecheck",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E artech@0.1.0 typecheck\r\n\u003E tsc --noEmit\r\n\r\n",
+        "durationMs": 1160
+      },
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": false,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 1,
+        "outputSample": "\r\n\u003E artech@0.1.0 test:e2e\r\n\u003E node tests/e2e.mjs\r\n\r\nnode:internal/modules/run_main:107\r\n    triggerUncaughtException(\r\n    ^\r\n\r\nlocator.click: Timeout 10000ms exceeded.\r\nCall log:\r\n\u001B[2m  - waiting for locator(\u0027form[role=\u0022search\u0022]\u0027).first().getByRole(\u0027link\u0027, { name: /RTX 5080 Nova/ })\u001B[22m\r\n\r\n    at c:\\Users\\ADMIN\\Desktop\\Artech\\tests\\e2e.mjs:125:8\r\n    at async runTest (c:\\Users\\ADMIN\\Desktop\\Artech\\tests\\e2e.mjs:93:3)\r\n    at async file:///c:/Users/ADMIN/Desktop/Artech/tests/e2e.mjs:109:3 {\r\n  log: [\r\n    \u0060  - waiting for locator(\u0027form[role=\u0022search\u0022]\u0027).first().getByRole(\u0027link\u0027, { name: /RTX 5080 Nova/ })\u0060\r\n  ],\r\n  name: \u0027TimeoutError\u0027\r\n}\r\n\r\nNode.js v24.16.0\r\n",
+        "durationMs": 24962,
+        "testResults": {
+          "testFramework": "unknown",
+          "runnerDetectedFrom": "none",
+          "testsTotal": 0,
+          "testsPassed": 0,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": true
+        }
+      },
+      {
+        "name": "dev-server-serves-home",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!DOCTYPE html\u003E\u003Chtml lang=\u0022es\u0022 class=\u0022inter_c15e96cb-module__0bjUvq__variable\u0022\u003E\u003Chead\u003E\u003Cmeta charSet=\u0022utf-8\u0022/\u003E\u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 imageSrcSet=\u0022/_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=384\u0026amp;q=75 384w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=640\u0026amp;q=75 640w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=750\u0026amp;q=75 750w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=828\u0026amp;q=75 828w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=1080\u0026amp;q=75 1080w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=1200\u0026amp;q=75 1200w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=1920\u0026amp;q=75 1920w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=2048\u0026amp;q=75 2048w, /_next/image?url=%2Fassets%2Fproducts%2Fgpu%2Frtx-5080.png\u0026amp;w=3840\u0026amp;q=75 3840w\u0022 imageSizes=\u0022(max-width: 640px) 78vw, (max-width: 1024px) 60vw, 520px\u0022/\u003E\u003Clink rel=\u0022stylesheet\u0022 href=\u0022/_next/static/chunks/%5Broot-of-the-server%5D__1uc-pyb._.css\u0022 data-precedence=\u0022next_static/chunks/[root-of-the-server]__1uc-pyb._.css\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022script\u0022 fetchPriority=\u0022low\u0022 href=\u0022/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_1di75ot._.js\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_next-devtools_index_090k2jm.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_client_0_90u2t._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_%40swc_helpers_cjs_1r9vbqw._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_1anvha4._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/turbopack-_08bm286._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_219uq1s._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_1i4ixuh._.js\u0022 async=\u0022\u0022 crossorigin=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_1e7rfkg._.js\u0022 async=\u0022\u0022 crossorigin=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/components_1aetbe_._.js\u0022 async=\u0022\u0022 crossorigin=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_0rui245._.js\u0022 async=\u0022\u0022 crossorigin=\u0022\u0022\u003E\u003C/script\u003E\u003Ctitle\u003EArtech\u003C/title\u003E\u003Cmeta name=\u0022description\u0022 content=\u0022E-commerce de tecnolog\u00EDa y electr\u00F3nica.\u0022/\u003E\u003Clink rel=\u0022icon\u0022 href=\u0022/favicon.svg\u0022 type=\u0022image/svg\u002Bxml\u0022/\u003E\u003Cmeta name=\u0022next-size-adjust\u0022 content=\u0022\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_build_polyfills_polyfill-nomodule.js\u0022 noModule=\u0022\u0022\u003E\u003C/script\u003E\u003C/head\u003E\u003Cbody class=\u0022font-sans antialiased\u0022\u003E\u003Cdiv hidden=\u0022\u0022\u003E\u003C!--$--\u003E\u003C!--/$--\u003E\u003C/div\u003E\u003Cheader data-scrolled=\u0022false\u0022 style=\u0022--glass-scroll-progress:0;--glass-current-bg-opacity:0.28;--glass-current-border-opacity:0.09;--glass-current-highlight-opacity:0.16;--glass-current-blur:18px;--glass-current-shadow-opacity:0.18;--glass-reflection-opacity:0.42;--glass-edge-soft-opacity:0.2;--glass-edge-strong-opacity:0.34;--glass-edge-opacity:0.38;--glass-x:50%;--glass-y:0%\u0022 class=\u0022hero-materialize artech-liquid-glass artech-navbar-glass sticky top-0 z-50\u0022\u003E\u003Cdiv class=\u0022mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6\u0022\u003E\u003Cdiv class=\u0022flex min-w-0 flex-1 items-center gap-3 lg:flex-none\u0022\u003E\u003Cbutton type=\u0022button\u0022 class=\u0022press-feedback inline-flex shrink-0 items-center justify-center rounded-full border bg-transparent focus-visible:outline-2 focus-visible:outline-offset-4 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 size-8 [\u0026amp;_svg]:size-[15px] border-border-on-dark text-text-primary-on-dark hover:border-text-secondary-on-dark artech-liquid-glass-control lg:hidden\u0022 ari\n\u2026[truncated]",
+        "durationMs": 121
+      }
+    ]
+  }
+}
