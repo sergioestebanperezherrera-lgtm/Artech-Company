@@ -1,52 +1,88 @@
-# UX_RULES — Artech
+# UX_RULES - Artech
 
-Reglas de **comportamiento e interacción** del sitio. Para apariencia visual, ver `DESIGN_SYSTEM.md` y `UI_RULES.md`. Para animaciones, ver `ANIMATIONS.md`.
+Reglas de comportamiento e interaccion del frontend. Para apariencia visual, ver `DESIGN_SYSTEM.md` y `UI_RULES.md`.
 
-## 1. Estados vacíos y de carga
+## 1. Estados Vacios y Carga
 
-- Cualquier estado vacío (carrito vacío, catálogo sin resultados de filtro, "Mis Pedidos" sin historial) debe mostrarse con un **mensaje amigable + ícono de línea** — nunca como un mensaje de error técnico o en color rojo de alerta.
-- Imágenes en carga: mostrar un skeleton con pulso sutil, nunca un spinner.
+- Carrito vacio, catalogo sin resultados y pedidos sin historial deben mostrarse como estados vacios amigables, no como errores tecnicos.
+- Las imagenes pueden mostrar skeleton o estado visual suave mientras cargan.
+- Si una accion tarda, debe comunicar estado con mensajes breves y honestos.
 
-## 2. Producto sin stock
+## 2. Producto Sin Stock
 
-- La `ProductCard` correspondiente se muestra con opacidad reducida.
-- Se agrega un `Badge` con la etiqueta "Agotado".
-- El botón "Añadir al carrito" se deshabilita (no se oculta).
+- La `ProductCard` se muestra con menor disponibilidad visual.
+- Se agrega `Badge` "Agotado".
+- "Anadir al carrito" se deshabilita; no se oculta.
 
 ## 3. Buscador
 
-- El ícono de lupa en el navbar, al hacer clic, **se expande** en un campo de texto con resultados en dropdown en vivo (búsqueda mientras se escribe).
-- No navega a una página de resultados separada hasta que el usuario presiona Enter.
-- La búsqueda debe permitir coincidencias por nombre, marca, categoría, y coincidencias parciales de palabras.
+- El buscador vive en navbar.
+- Permite coincidencias parciales por nombre, marca y categoria.
+- Enter navega a catalogo con query de busqueda.
+- Escape cierra sugerencias o buscador cuando corresponde.
+- Seleccionar una sugerencia navega al producto.
 
-## 4. Filtros del catálogo
+## 4. Filtros del Catalogo
 
-- Nivel de filtro: **avanzado** — categoría, marca, rango de precio, y especificaciones técnicas que cambian dinámicamente según el tipo de producto (ej. RAM/almacenamiento para celulares; VRAM/bus para GPU; tamaño/resolución para monitores).
-- Comportamiento de apertura/cierre y adaptación mobile: ver `RESPONSIVE.md`.
+- Soportan categoria, marca, precio y specs dinamicas.
+- Desktop: sidebar.
+- Mobile: panel/drawer usable a pantalla completa.
+- Debe poder cerrarse con boton visible y Escape.
 
-## 5. Navegación de resultados del catálogo
+## 5. Navegacion de Catalogo
 
-- **Paginación clásica** (1, 2, 3...). No usar scroll infinito ni botón "cargar más" — decisión explícita de producto.
+- Las categorias de navbar, mobile menu y footer navegan a `/catalogo?categoria=...`.
+- Cambiar de una categoria a otra debe actualizar filtros y resultados.
+- Se usa paginacion clasica, no scroll infinito.
 
-## 6. Gate de autenticación en el carrito
+## 6. Gate de Autenticacion
 
-- El carrito permite revisar productos y cantidades sin necesidad de sesión iniciada.
-- Al intentar **proceder al pago**, si no hay sesión iniciada (mock), se debe mostrar/abrir el flujo de login/registro (`AuthPanel`) antes de continuar.
-- El flujo de pago real está fuera de alcance en esta etapa (ver `PROJECT_SPEC.md`) — solo se implementa el gate de "requiere cuenta", no una pasarela de pago funcional.
+- El usuario puede revisar carrito sin iniciar sesion.
+- Al intentar comprar sin sesion mock, se abre `AuthPanel`.
+- El fondo se oscurece/desenfoca y la card mantiene foco visual.
+- No existe checkout real todavia.
 
-## 7. Moneda
+## 7. Login / Registro
 
-- El sitio muestra precios en **Quetzales (GTQ) o Dólares (USD)**, según selección del usuario mediante un selector visible.
-- Todo componente que muestre precio (`ProductCard`, `CartItem`, página de producto) debe leer la moneda seleccionada desde un estado global, no manejarla de forma local por componente.
+- Inputs vacios por defecto.
+- Usar placeholders y `autocomplete` correcto.
+- Si se documenta una cuenta demo, debe mostrarse como ayuda visible, no como valor precargado.
+- Validaciones visibles y mensajes no tecnicos.
+- Boton mostrar/ocultar contrasena con `aria-label`.
+- Cierre con Escape y boton visible.
+- Los accesos sociales son pendientes de backend/OAuth.
 
-## 8. Idioma
+## 8. Carrito
 
-- Español únicamente en esta etapa. No se implementa selector de idioma ni estructura i18n todavía, pero el texto no debe quedar hardcodeado de forma que bloquee agregarlo en el futuro (evitar texto dentro de imágenes).
+- Permite agregar, actualizar cantidad y eliminar productos.
+- Debe persistir localmente.
+- El boton de carrito desde cualquier pagina abre el drawer global.
+- La pagina `/carrito` ofrece una vista dedicada del mismo contenido.
 
-## 9. Convención de rutas de producto
+## 9. Moneda
 
-- `/producto/[slug]` usando un slug legible derivado del nombre del producto (ej. `/producto/rtx-5080`), nunca un ID numérico — decisión tomada por razones de SEO.
+- El usuario puede alternar entre GTQ y USD.
+- La seleccion persiste localmente.
+- Todo componente con precio debe usar el store global.
 
-## 10. Wishlist / Favoritos
+## 10. Errores
 
-- Pospuesto a una fase futura. No implementar el ícono de corazón en `ProductCard` en esta etapa (ver `PROJECT_SPEC.md`).
+Los mensajes visibles para usuario deben ser claros:
+
+- "No pudimos completar la accion. Intenta nuevamente."
+- "Hubo un problema al cargar esta seccion."
+- "Tu conexion parece inestable. Revisa internet e intenta otra vez."
+
+No mostrar stack traces ni mensajes como "Unexpected error" en UI.
+
+## 11. Accesibilidad
+
+- Foco visible en elementos interactivos.
+- Navegacion por teclado conservada.
+- Modales con focus trap cuando esten abiertos.
+- Estados de carga comunicados con `aria-live` cuando aplica.
+- `prefers-reduced-motion` respetado.
+
+## 12. Rutas de Producto
+
+Usar `/producto/[slug]` con slug legible, nunca ID numerico visible en la URL.

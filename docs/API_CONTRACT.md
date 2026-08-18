@@ -1,90 +1,109 @@
-# API_CONTRACT — Artech
+# API_CONTRACT - Artech
 
-No existe backend implementado en esta etapa. Este documento define la **forma de datos** que `lib/types/` y `lib/data/` deben respetar, y los endpoints que se esperaría exponer cuando el backend se construya (ver `ARCHITECTURE.md` sección 5). El objetivo es que conectar un backend real en el futuro sea un cambio de implementación en `lib/services/`, no una reescritura de componentes.
+No existe backend implementado actualmente. Este documento describe los modelos que usan los datos mock y propone endpoints para una futura API.
 
-Todo lo aquí definido es **propuesto**, a validar cuando exista el equipo/etapa de backend — pero debe usarse como contrato de trabajo mientras tanto.
+Todo endpoint mencionado aqui es **propuesto**. No debe interpretarse como una API existente.
 
-## 1. Modelo `Product`
+## 1. Datos Mock Actuales
+
+Los datos viven en:
+
+- `lib/data/products.ts`
+- `lib/data/categories.ts`
+- `lib/data/brands.ts`
+
+La UI consume esos datos mediante:
+
+- `lib/services/productService.ts`
+- `lib/services/categoryService.ts`
+- `lib/services/brandService.ts`
+
+Cuando exista backend, los services son el punto natural para reemplazar mocks por `fetch` o por la capa de cliente elegida.
+
+## 2. Modelo `Product`
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `id` | `string` | Identificador interno |
-| `slug` | `string` | Usado en la URL (`/producto/[slug]`), ver `UX_RULES.md` sección 9 |
-| `name` | `string` | |
+| `slug` | `string` | Usado en `/producto/[slug]` |
+| `name` | `string` | Nombre visible |
 | `category` | `string` | Referencia a `Category.id` |
 | `brand` | `string` | Referencia a `Brand.id` |
 | `priceGTQ` | `number` | Precio en Quetzales |
-| `priceUSD` | `number` | Precio en Dólares — ambas monedas se guardan explícitamente, no se calculan por conversión en tiempo real (ver `UX_RULES.md` sección 7) |
-| `discountPercent` | `number \| null` | Si existe, la tarjeta muestra `Badge` de descuento |
-| `shortSpecs` | `string[]` | 2–3 líneas cortas mostradas en `ProductCard` |
-| `fullSpecs` | `{ label: string; value: string }[]` | Tabla completa, mostrada tras "Más info" |
-| `images` | `string[]` | Rutas a imágenes (placeholders en esta etapa, ver `PROJECT_SPEC.md`) |
-| `stock` | `number` | `0` implica estado "Agotado" (ver `UX_RULES.md` sección 2) |
-| `hasRgbLighting` | `boolean` | Determina si la tarjeta aplica el borde animado `accent-rgb` (ver `UI_RULES.md` sección 3) |
+| `priceUSD` | `number` | Precio en Dolares |
+| `discountPercent` | `number \| null` | Descuento visible si existe |
+| `shortSpecs` | `string[]` | Specs resumidas para cards |
+| `fullSpecs` | `{ label: string; value: string }[]` | Specs completas para detalle |
+| `images` | `string[]` | Rutas a assets locales o placeholders |
+| `stock` | `number` | `0` implica "Agotado" |
+| `hasRgbLighting` | `boolean` | Activa borde RGB solo cuando corresponde |
 
-## 2. Modelo `Category`
+## 3. Modelo `Category`
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | `string` | Identificador usado en filtros |
+| `name` | `string` | Nombre visible |
+| `icon` | `string` | Referencia conceptual a icono de linea |
+
+Categorias actuales: Celulares, Tarjetas graficas, CPU/RAM, Monitores, Perifericos, Componentes, Consolas y Accesorios.
+
+## 4. Modelo `Brand`
 
 | Campo | Tipo |
 |---|---|
 | `id` | `string` |
 | `name` | `string` |
-| `icon` | `string` (referencia a ícono de línea, no imagen) |
+| `logo` | `string` |
 
-Categorías principales según `PROJECT_SPEC.md`: Celulares, Tarjetas gráficas, CPU/RAM, Monitores, Periféricos, Componentes, Consolas, Accesorios.
-
-## 3. Modelo `Brand`
-
-| Campo | Tipo |
-|---|---|
-| `id` | `string` |
-| `name` | `string` |
-| `logo` | `string` (placeholder, ver regla de assets en `PROJECT_SPEC.md`) |
-
-## 4. Modelo `CartItem`
-
-| Campo | Tipo |
-|---|---|
-| `productId` | `string` |
-| `quantity` | `number` |
-
-El precio y demás datos del producto se resuelven contra `Product` en tiempo de render — `CartItem` no duplica esa información.
-
-## 5. Modelo `User`
+## 5. Modelo `CartItem`
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `id` | `string` | |
-| `name` | `string` | |
-| `email` | `string` | |
+| `productId` | `string` | Referencia a `Product.id` |
+| `quantity` | `number` | Cantidad en carrito |
 
-Mock en esta etapa — sin contraseña real ni backend de autenticación (ver `PROJECT_SPEC.md`).
+El precio se resuelve contra `Product`; `CartItem` no duplica datos de producto.
 
-## 6. Modelo `Order`
+## 6. Modelo `User`
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `id` | `string` | |
-| `userId` | `string` | |
-| `items` | `CartItem[]` | |
-| `status` | `string` | Placeholder — sin flujo de pago real todavía |
-| `createdAt` | `string` (ISO date) | |
+| `id` | `string` | Identificador mock |
+| `name` | `string` | Nombre visible |
+| `email` | `string` | Email visible |
 
-No se implementa en esta etapa; existe solo para que `OrdersEmptyState` y el futuro historial de pedidos tengan un modelo de referencia (ver `COMPONENTS.md`).
+La sesion actual es mock y local. No hay contrasenas reales ni tokens.
 
-## 7. Endpoints propuestos (para cuando exista backend)
+## 7. Modelo `Order`
 
-| Método | Ruta | Descripción |
+| Campo | Tipo | Notas |
 |---|---|---|
-| `GET` | `/api/products` | Lista de productos, con soporte de query params para filtros (categoría, marca, rango de precio, specs) y paginación |
-| `GET` | `/api/products/:slug` | Detalle de un producto |
-| `GET` | `/api/categories` | Lista de categorías |
+| `id` | `string` | Futuro identificador |
+| `userId` | `string` | Usuario asociado |
+| `items` | `CartItem[]` | Items comprados |
+| `status` | `string` | Estado futuro del pedido |
+| `createdAt` | `string` | Fecha ISO |
+
+Pedidos reales no estan implementados todavia.
+
+## 8. Endpoints Propuestos Para Backend Futuro
+
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| `GET` | `/api/products` | Lista de productos con filtros y paginacion |
+| `GET` | `/api/products/:slug` | Detalle de producto |
+| `GET` | `/api/categories` | Lista de categorias |
 | `GET` | `/api/brands` | Lista de marcas |
-| `POST` | `/api/auth/login` | Login real (reemplaza el mock de `useAuth()`) |
-| `POST` | `/api/auth/register` | Registro real |
-| `GET` | `/api/cart` | Carrito del usuario autenticado (si se decide persistir en backend) |
-| `POST` | `/api/cart` | Agregar/actualizar ítem del carrito |
-| `GET` | `/api/orders` | Historial de pedidos del usuario |
+| `POST` | `/api/auth/login` | Login real futuro |
+| `POST` | `/api/auth/register` | Registro real futuro |
+| `GET` | `/api/cart` | Carrito persistido en backend, si se decide implementarlo |
+| `POST` | `/api/cart` | Agregar o actualizar items |
+| `GET` | `/api/orders` | Historial de pedidos |
 
-## 8. Ubicación de los datos mock
+## 9. Criterios Para Integrar Backend
 
-`lib/data/` debe contener archivos (JSON o TS) con esta misma forma exacta, para que `lib/services/` pueda simplemente cambiar de fuente (mock → fetch real) sin que ningún componente necesite modificarse.
+- Mantener modelos compatibles o actualizar este contrato primero.
+- Evitar que componentes importen datos mock directamente.
+- Centralizar llamadas reales en services o capa equivalente.
+- No mezclar autenticacion real con la sesion mock sin definir estrategia de migracion.

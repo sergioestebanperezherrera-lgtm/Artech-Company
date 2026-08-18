@@ -1,103 +1,141 @@
-# COMPONENTS — Artech
+# COMPONENTS - Artech
 
-Inventario de todos los componentes del proyecto. Cada componente tiene una única responsabilidad y debe construirse **una sola vez** y reutilizarse — nunca duplicar su lógica en distintas páginas (ver regla de separación en `ARCHITECTURE.md`).
+Inventario de componentes principales del frontend. Este documento describe responsabilidad y uso; los valores visuales estan en `DESIGN_SYSTEM.md` y las reglas de composicion en `UI_RULES.md`.
 
-Los valores visuales exactos (color, tipografía) están en `DESIGN_SYSTEM.md`. Las reglas de composición están en `UI_RULES.md`. Las animaciones están en `ANIMATIONS.md`. Este documento describe **qué hace cada componente y qué necesita para funcionar**, no su apariencia final.
-
----
-
-## `components/ui/` — Átomos
+## `components/ui/`
 
 ### `Button`
-Botón reutilizable con variantes: `primary-on-dark`, `primary-on-light`, `outline-on-dark`, `outline-on-light` (ver `UI_RULES.md` sección 2 para cuándo usar cada una). Props esperadas: `variant`, `children`, `onClick`, `disabled`.
+Boton reutilizable con variantes para fondos oscuros y claros. Incluye estados de feedback, loading/disabled cuando corresponde y soporte de foco visible.
 
 ### `IconCircleButton`
-Botón circular con ícono centrado, usado en navbar (búsqueda, cuenta, carrito) y en accesos sociales del login. Props: `icon`, `size` (32px navbar / 28px social), `onClick`.
+Boton circular con icono centrado. Se usa en navbar, controles de carrusel, cierre de modales/drawers y acciones compactas.
 
 ### `Badge`
-Etiqueta pequeña con dos variantes: descuento (ej. "-20%") y estado "Agotado". Props: `variant` (`discount` | `outOfStock`), `label`.
+Etiqueta pequena para descuentos y estados como "Agotado".
 
 ### `Card`
-Wrapper genérico que aplica `surface-card`, `radius-card` y `shadow-card` — base de la que heredan `ProductCard` y otros contenedores elevados.
+Wrapper base para superficies elevadas reutilizables.
 
----
+## `components/brand/`
 
-## `components/layout/` — Estructura global
+### `LogoMark`
+Isotipo reutilizable de ARTECH. Se usa como parte de la identidad visual en navbar, hero, footer y favicon cuando corresponda.
 
-### `ParticlesBackground`
-Canvas animado de fondo, presente en el layout raíz de la aplicación (envuelve todas las páginas). Ver especificación completa en `ANIMATIONS.md` sección 1.
+## `components/layout/`
 
 ### `Navbar`
-Barra de navegación fija/sticky. Contiene: logo, categorías, `IconCircleButton` de búsqueda (expande campo con resultados en vivo), `IconCircleButton` de cuenta (abre `AuthPanel`), `IconCircleButton` de carrito (abre `CartDrawer`). Composición exacta en `UI_RULES.md` sección 5. Comportamiento mobile en `RESPONSIVE.md`.
+Navegacion global con logo, categorias, buscador, cuenta y carrito. En mobile delega categorias al menu movil.
 
 ### `MobileMenu`
-Menú hamburguesa que reemplaza la navegación de categorías en mobile.
+Menu responsive para navegacion de categorias y enlaces principales en pantallas pequenas.
 
 ### `Footer`
-Pie de página: logo, links (Tienda, Soporte, Newsletter), redes sociales, copyright. Presente en todas las páginas.
+Footer global con marca, enlaces de tienda/soporte, newsletter y redes sociales. Las redes sin URL oficial definida deben quedar marcadas como pendientes, no como links muertos.
 
----
+### `GlobalOverlays`
+Coordina overlays globales como carrito y autenticacion para que puedan abrirse desde cualquier pagina.
 
-## `components/product/` — Producto
+## `components/home/`
+
+### `BrandHeroSection`
+Hero principal de marca. Contiene video de fondo, isotipo, titulo, subtitulo, descripcion y CTAs.
+
+### `HeroVideoBackground`
+Video local del hero con autoplay, muted, loop seamless mediante asset ping-pong, `playsInline`, poster y pausa cuando sale del viewport.
+
+### `HeroSection`
+Carrusel principal de ofertas. Usa Embla, autoplay y controles manuales.
+
+### `FeaturedProductsShowcase`
+Seccion de novedades/productos destacados con una card protagonista y cuatro secundarias.
+
+### `CategoryGrid`
+Grid de categorias principales.
+
+### `TrustSection`
+Bloque de confianza: envio, garantia, soporte y pago seguro.
+
+### `CurrencySelector`
+Selector de moneda para GTQ/USD.
+
+## `components/product/`
 
 ### `ProductCard`
-**El componente más reutilizado del sitio.** Usado en: Ofertas (Home), Novedades (Home), grid del Catálogo, "También te puede interesar" (página de producto). Sigue el patrón de capas descrito en `UI_RULES.md` sección 1.
+Card reutilizable para productos en catalogo, novedades y relacionados. La imagen, nombre y area principal navegan a detalle; "Anadir al carrito" es una accion separada.
 
-Contenido: imagen (dentro de contenedor negro interno), nombre, especificaciones cortas (2–3 líneas), precio, botón "Más información" (outline), botón "Añadir al carrito" (primario). Estado especial: producto sin stock → tarjeta con opacidad reducida, `Badge` "Agotado", botón "Añadir al carrito" deshabilitado (ver `UX_RULES.md`).
+Incluye:
 
-Variante especial: si el producto es una tarjeta gráfica / tiene iluminación RGB, aplica el borde animado `accent-rgb` (ver `ANIMATIONS.md` sección 5 y regla de uso en `UI_RULES.md` sección 3).
+- Imagen mediante `ProductImage`.
+- Nombre, specs cortas y precio.
+- Boton "Mas informacion".
+- Boton "Anadir al carrito".
+- Estado agotado.
+- Borde RGB cuando `hasRgbLighting` sea `true`.
+
+### `RgbLightingFrame`
+Wrapper reutilizable para el borde RGB animado. Debe usarse solo en GPUs compatibles.
+
+### `ProductImage`
+Componente de imagen de producto con fallback y carga apropiada.
+
+### `ProductDetailView`
+Vista principal de detalle: galeria, informacion, specs y relacionados.
 
 ### `ProductGallery`
-Usado solo en la página de producto. Imagen grande protagonista + miniaturas debajo para cambiar de ángulo (estilo Apple), con leve zoom/rotación al hover.
+Galeria con imagen principal y miniaturas.
 
 ### `SpecsTable`
-Tabla simple (spec: valor) visible por defecto; un botón "Más info" la expande a la lista completa de especificaciones.
+Tabla de especificaciones con comportamiento expandible cuando aplica.
 
----
-
-## `components/carousel/` — Carruseles
+## `components/carousel/`
 
 ### `AutoScrollCarousel`
-Componente genérico reutilizado en: Ofertas (Home), Novedades destacadas si se muestran en carrusel, secciones de marca/categoría (Catálogo), "También te puede interesar" (página de producto). Comportamiento exacto (auto-avance, pausa al mantener presionado, flechas, loop) en `ANIMATIONS.md` sección 4. Recibe una lista de `ProductCard` (u otro contenido) como children/prop.
+Carrusel reutilizable para secciones de productos relacionados u otros listados horizontales. Comparte patron de controles, loop y reduced motion.
 
----
+## `components/catalog/`
 
-## `components/catalog/` — Catálogo
+### `CatalogView`
+Vista completa de catalogo: filtros, resultados, paginacion y estados vacios.
 
 ### `FilterPanel`
-Panel de filtros tipo Amazon: categoría, marca, precio, especificaciones técnicas dinámicas según el tipo de producto. Desktop: sidebar colapsable. Mobile: bottom sheet a pantalla completa (ver `RESPONSIVE.md`).
+Filtros por categoria, marca, precio y specs dinamicas. En mobile se muestra dentro de un drawer/panel.
 
 ### `Pagination`
-Paginación clásica (1, 2, 3...) para los resultados del catálogo — no scroll infinito, no botón "cargar más".
+Paginacion clasica para resultados del catalogo.
 
----
-
-## `components/cart/` — Carrito
+## `components/cart/`
 
 ### `CartDrawer`
-Panel lateral deslizable desde la derecha. Contiene `CartItem` (lista), `CartSummary` (subtotal + botón "Proceder al pago"). Minimalista, sin recomendaciones (ver `UI_RULES.md` sección 9). Al intentar proceder al pago sin sesión iniciada, dispara el gate de autenticación (ver `UX_RULES.md`).
+Drawer global del carrito con lista de productos, resumen y gate de autenticacion para comprar.
+
+### `CartPageView`
+Vista de pagina dedicada del carrito.
 
 ### `CartItem`
-Fila individual dentro del drawer: imagen pequeña, nombre, precio, cantidad, opción de eliminar.
+Fila de producto dentro del carrito.
 
 ### `CartSummary`
-Subtotal y botón de acción principal del carrito.
+Resumen de subtotal y acciones principales.
 
----
-
-## `components/auth/` — Autenticación (mock, sin backend real)
+## `components/auth/`
 
 ### `AuthPanel`
-Componente de login/registro con panel dividido deslizante (ver mecánica completa en `UI_RULES.md` sección 8 y animación en `ANIMATIONS.md` sección 6). Contiene dos formularios (`SignInForm`, `SignUpForm`) coexistiendo, y el panel oscuro superpuesto con el mensaje/botón de alternancia.
+Modal de login/registro con sesion mock. Incluye cierre con Escape, bloqueo de scroll, focus trap, validaciones visibles y boton para mostrar/ocultar contrasena.
 
-Incluye 3 `IconCircleButton` de acceso social (Facebook, X, Google) por formulario — decorativos, sin lógica de autenticación real en esta etapa (ver `PROJECT_SPEC.md`).
+Los accesos sociales son decorativos mientras no exista backend/OAuth.
 
----
+## `components/user/`
 
-## `components/user/` — Panel de usuario
+### `AccountView`
+Vista del panel de usuario.
 
 ### `UserProfileCard`
-Tarjetas de "Mis datos" (Nombre, Email), editables.
+Datos mock de usuario editables localmente.
 
 ### `OrdersEmptyState`
-Estado vacío elegante para "Mis Pedidos" mientras no existe backend — mensaje + ícono de línea, nunca un mensaje de error técnico (ver `UX_RULES.md`).
+Estado vacio para pedidos mientras no existe backend.
+
+## `components/motion/`
+
+### `ScrollReveal`
+Wrapper para reveals al entrar al viewport. Debe respetar `prefers-reduced-motion`.

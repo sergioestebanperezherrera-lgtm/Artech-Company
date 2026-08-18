@@ -1,97 +1,97 @@
-# UI_RULES — Artech
+# UI_RULES - Artech
 
-Este documento define **cómo se combinan** los tokens definidos en `DESIGN_SYSTEM.md` para construir la interfaz. Si buscas un valor de color/tipografía/radio exacto, consulta `DESIGN_SYSTEM.md` — aquí solo se referencian por nombre de token.
+Este documento describe como se combinan los tokens de `DESIGN_SYSTEM.md` en la interfaz actual.
 
-## 1. Patrón de contraste en capas (regla visual central del sitio)
+## 1. Principio Visual General
 
-Toda tarjeta de producto o categoría sigue esta estructura de capas, de afuera hacia adentro:
+El fondo de ARTECH es negro global y continuo. Las secciones deben evitar backgrounds rectangulares innecesarios para que el ambiente visual se sienta como una sola experiencia. Las superficies importantes se elevan mediante Liquid Glass, bordes finos, sombras controladas y highlights localizados.
 
-1. `bg-base` (fondo negro de la página, con partículas animadas de fondo en todo momento)
-2. `surface-card` (tarjeta blanca, elevada con `shadow-card`)
-3. `surface-card-inset` (contenedor interno negro, exclusivamente para alojar la imagen del producto)
-4. La imagen del producto, flotando dentro de ese contenedor negro
+## 2. Reutilizacion de Componentes
 
-Este patrón genera un efecto de "estudio fotográfico": el producto parece flotar en su propio espacio, y el contraste blanco/negro se repite en distintas escalas dentro de la misma tarjeta. **Es la regla visual más importante del proyecto y se aplica sin excepción a toda tarjeta que muestre un producto.**
+- Si una pieza de UI ya existe como componente, debe reutilizarse.
+- `ProductCard` se usa en catalogo, novedades y productos relacionados.
+- `RgbLightingFrame` centraliza el borde RGB para GPUs compatibles.
+- Las paginas de `app/` deben componer componentes y obtener datos desde services; no deben duplicar logica visual.
 
-## 2. Jerarquía de botones
+## 3. Jerarquia de Botones
 
-| Contexto | Botón primario | Botón secundario |
+| Contexto | Primario | Secundario |
 |---|---|---|
-| Fuera de una tarjeta (directamente sobre `bg-base`) | `btn-primary-on-dark` (blanco sobre negro) | `btn-outline-on-dark` |
-| Dentro de una tarjeta blanca (`surface-card`) | `btn-primary-on-light` (negro sobre blanco) | `btn-outline-on-light` |
-| Dentro de un panel oscuro sobre tarjeta blanca (ej. login) | `btn-primary-on-dark` (blanco sobre negro); al presionar (`:active`), invierte momentáneamente a negro sobre blanco como feedback táctil | — |
+| Sobre fondo oscuro | Blanco sobre negro | Outline sobre oscuro |
+| Dentro de material claro | Negro sobre blanco | Outline sobre claro |
+| Modales o drawers | El CTA de mayor contraste respecto a la superficie inmediata | Acciones secundarias con menor peso visual |
 
-Regla general: el botón primario siempre usa el color de mayor contraste respecto a la superficie inmediata en la que está apoyado, nunca respecto al fondo general de la página.
+Todo boton importante debe tener feedback inmediato al click y estado `disabled` cuando una accion esta en curso.
 
-## 3. Acento RGB — regla de uso
+## 4. Acento RGB
 
-El degradado animado `accent-rgb` (ver `DESIGN_SYSTEM.md`) se usa **exclusivamente** como borde animado en tarjetas de producto de **tarjetas gráficas / productos con iluminación RGB**. No se usa en ningún otro tipo de producto ni en ningún otro elemento de la interfaz. Es la única excepción de color dentro de una paleta que, en el resto del sitio, es monocromática (negro/gris/blanco). Especificación de la animación en `ANIMATIONS.md`.
+El degradado RGB se usa exclusivamente en productos GPU que tengan `hasRgbLighting: true`.
 
-## 4. Grids de producto
+Aplica a:
 
-| Contexto | Columnas desktop | Columnas mobile |
-|---|---|---|
-| Grid de categorías principales (Home) | 4 columnas × 2 filas | 2 columnas |
-| Grid de productos (Novedades, Catálogo) | 4 columnas | 2 columnas |
+- `ProductCard` de GPUs compatibles.
+- Tarjeta de informacion de detalle de producto cuando el producto sea una GPU con RGB.
 
-Ver breakpoints exactos en `RESPONSIVE.md`.
+No debe aplicarse a otros productos ni convertirse en acento general de marca.
 
-## 5. Navbar — composición
+## 5. Navbar
 
-Orden de elementos, de izquierda a derecha:
+La navbar usa el primer lenguaje Liquid Glass del proyecto:
 
-1. Logo (`λ` + "Artech")
-2. Categorías de navegación (texto)
-3. Bloque de íconos circulares, en este orden: **búsqueda → cuenta → carrito**
+1. Logo/isotipo + "Artech".
+2. Navegacion por categorias.
+3. Buscador.
+4. Cuenta.
+5. Carrito.
 
-Comportamiento de cada ícono (detalle funcional en `UX_RULES.md` y `COMPONENTS.md`):
-- Búsqueda: al hacer clic, se expande un campo de búsqueda con resultados en vivo.
-- Cuenta: abre el flujo de login/registro (ver `COMPONENTS.md` → AuthPanel).
-- Carrito: abre el drawer del carrito.
+En mobile, las categorias pasan al menu hamburguesa y los accesos de cuenta/carrito permanecen disponibles.
 
-## 6. Composición del Home — orden de secciones
+## 6. Home
 
-El orden de las secciones del Home es fijo y no debe alterarse sin actualizar este documento:
+Orden actual de secciones:
 
-1. Navbar (fija/sticky)
-2. Hero — un único producto protagonista, sin carrusel
-3. Ofertas — carrusel (ver `COMPONENTS.md` → AutoScrollCarousel)
-4. Categorías principales — grid
-5. Novedades / Destacados — grid de `ProductCard`
-6. Sección de confianza — 4 íconos (envío, garantía, soporte, pago seguro)
-7. Footer
+1. Navbar global.
+2. Hero de marca: isotipo + Artech, subtitulo, descripcion, CTAs y video de fondo.
+3. Carrusel principal de ofertas.
+4. Novedades / Productos destacados: una card protagonista y cuatro secundarias.
+5. Explora ARTECH / categorias.
+6. Seccion de confianza.
+7. Footer global.
 
-No se incluye una sección de "Marcas populares" en el Home (decisión explícita, para mantenerlo corto).
+El carrusel de ofertas es protagonista comercial, pero no reemplaza el hero de identidad.
 
-## 7. Página de producto — composición
+## 7. Catalogo
 
-1. Breadcrumb (Inicio > Categoría > Producto)
-2. Galería de imagen (imagen grande + miniaturas debajo, estilo Apple) + info principal (nombre, precio, specs simples, botones de acción)
-3. Botón "Más info" → expande tabla completa de especificaciones
-4. Sección "También te puede interesar" (`AutoScrollCarousel` con `ProductCard`)
-5. Footer
+- Desktop: filtros como sidebar colapsable.
+- Mobile: boton "Filtros" abre panel/drawer usable a pantalla completa.
+- Los filtros soportan categoria, marca, precio y especificaciones dinamicas.
+- Los resultados usan `ProductCard` y paginacion clasica.
 
-## 8. Login / Registro — composición visual
+## 8. Pagina de Producto
 
-- Tarjeta blanca dividida en 2 mitades: un formulario a cada lado (Iniciar sesión / Crear cuenta), ambos presentes en el DOM simultáneamente.
-- Un panel oscuro (`surface-panel-dark`) se superpone sobre una de las dos mitades, mostrando un mensaje de bienvenida + botón de acción para alternar de modo. El mecanismo de desliz está en `ANIMATIONS.md`.
-- Círculos decorativos de línea fina (sin color, solo borde) en las esquinas del panel oscuro.
-- **Alineación:** todo el contenido de cada formulario (logo+título, íconos sociales, campos, botón) está centrado dentro de su mitad, con un ancho máximo fijo. El texto dentro de los inputs permanece alineado a la izquierda (estándar de legibilidad).
-- Cada formulario incluye 3 íconos circulares de acceso social (Facebook, X, Google) arriba de los campos, con separador de texto ("O con tu correo"). Sin funcionalidad real en esta etapa — ver `PROJECT_SPEC.md` sobre alcance de autenticación.
-- Toda la pantalla vive centrada sobre `bg-base` con partículas.
+1. Breadcrumb.
+2. Galeria + tarjeta de informacion principal.
+3. Tabla de especificaciones.
+4. Productos relacionados con `AutoScrollCarousel` y `ProductCard`.
 
-## 9. Carrito — composición
+La tarjeta principal de una GPU RGB reutiliza el mismo estilo de borde RGB que las cards de catalogo.
 
-- Panel lateral deslizable desde la derecha (drawer), minimalista.
-- Contenido: lista de productos (imagen, nombre, precio, cantidad), subtotal, botón "Proceder al pago".
-- **Sin** recomendaciones ni sección "también te puede interesar" dentro del carrito — es intencionalmente enfocado solo en revisar y pagar.
+## 9. Login / Registro
 
-## 10. Panel de usuario — composición
+- `AuthPanel` es un modal global.
+- Desktop mantiene panel dividido.
+- Mobile se adapta a una columna.
+- Campos vacios por defecto, con placeholders y autocomplete correctos.
+- Los accesos sociales son decorativos hasta que exista backend/OAuth.
+- El cierre debe ser visible, accesible y funcionar con Escape.
 
-1. Header: nombre de usuario, avatar/iniciales (placeholder), botón "Volver a la tienda"
-2. Tarjetas de "Mis datos" (Nombre, Email) — editables, con label pequeño arriba del valor
-3. "Mis Pedidos" — historial; estado vacío elegante mientras no hay backend (ver `UX_RULES.md`)
-4. "Direcciones guardadas" — placeholder para fase de backend
-5. Botón "Cerrar sesión" — sólido, `btn-primary-on-light`
+## 10. Carrito
 
-Favoritos/Wishlist: fuera de alcance en esta etapa (ver `PROJECT_SPEC.md`).
+- El carrito existe como drawer global y pagina dedicada.
+- Permite revisar, actualizar y eliminar productos.
+- El checkout real no existe todavia.
+- Si el usuario intenta comprar sin sesion mock, se abre `AuthPanel`.
+
+## 11. Cuenta
+
+El panel de cuenta muestra datos mock editables y estados vacios para pedidos/direcciones mientras no exista backend.

@@ -1,31 +1,37 @@
-# RESPONSIVE — Artech
+# RESPONSIVE - Artech
 
-## Prioridad del proyecto
-
-**Mobile-first, crítico.** El sitio debe diseñarse y construirse con la misma calidad en mobile que en desktop desde la primera versión del frontend — no es un ajuste posterior, es un requisito desde la Fase 0 del `ROADMAP.md`.
+El frontend esta construido mobile-first y debe conservar buena legibilidad en mobile, tablet y desktop.
 
 ## Breakpoints
 
-| Nombre | Rango | Convención |
+| Nombre | Rango | Convencion |
 |---|---|---|
-| Mobile | `< 640px` | Estándar Tailwind (`sm` como límite inferior) |
-| Tablet | `640px – 1024px` | Estándar Tailwind (`md`/`lg`) |
-| Desktop | `> 1024px` | Estándar Tailwind (`lg`+) |
+| Mobile | `< 640px` | Tailwind `sm` como limite inferior |
+| Tablet | `640px - 1024px` | Tailwind `md` / `lg` |
+| Desktop | `> 1024px` | Tailwind `lg+` |
 
-No se definieron breakpoints custom — usar la escala por defecto de Tailwind CSS.
+No se usan breakpoints custom como regla general.
 
-## Comportamiento por sección
+## Comportamiento Por Seccion
 
-| Sección | Desktop | Mobile |
+| Seccion | Desktop | Mobile |
 |---|---|---|
-| Navbar | Logo + categorías en texto + 3 íconos circulares, todo visible | Colapsa a menú hamburguesa; íconos de cuenta y carrito permanecen siempre visibles fuera del menú |
-| Grid de categorías (Home) | 4 columnas × 2 filas | 2 columnas |
-| Grid de productos (Novedades, Catálogo) | 4 columnas | 2 columnas |
-| Filtros del Catálogo | Panel lateral izquierdo, tipo Amazon, colapsable/expandible | Colapsan a un botón "Filtros" que abre un **panel inferior (bottom sheet) a pantalla completa** |
-| Carruseles (Ofertas, Novedades, relacionados) | Múltiples tarjetas visibles + flechas | Igual comportamiento (auto-scroll + pausa + flechas), ajustando el ancho de tarjeta visible; buen soporte táctil es obligatorio (ver elección de librería en `ARCHITECTURE.md`) |
-| Login / Registro (panel dividido) | Ambas mitades visibles lado a lado dentro de la tarjeta | Debe adaptarse a una sola columna visible por vez, manteniendo la lógica de "panel que se desliza" pero ajustando el layout para que no se vean ambas mitades comprimidas — evaluar en implementación si se apila verticalmente o se mantiene el ancho de tarjeta reducido con scroll horizontal deshabilitado |
-| Carrito (drawer) | Panel lateral de ancho fijo (~280–320px) | Panel lateral a ancho completo o casi completo de la pantalla |
+| Navbar | Logo, categorias, buscador, cuenta y carrito visibles | Menu hamburguesa para categorias; cuenta/carrito siguen accesibles |
+| Hero | Video completo con contenido a la izquierda | Video reposicionado para legibilidad; gradiente local detras del texto |
+| Carrusel de ofertas | Card horizontal grande con texto e imagen | Misma estructura adaptada a ancho movil y controles tactiles |
+| Productos destacados | Card protagonista + cuatro secundarias | Mantiene jerarquia con distribucion legible |
+| Grid de categorias | Varias columnas | 2 columnas o layout compacto segun ancho |
+| Catalogo | Filtros en sidebar + grid | Boton "Filtros" abre panel/drawer a pantalla completa |
+| ProductCard | Grid amplio | Evitar overflow de texto, precio y botones |
+| Login / Registro | Modal con panel dividido | Una columna usable, cierre visible y scroll controlado |
+| Carrito | Drawer lateral | Drawer ancho completo o casi completo |
+| Footer | Columnas | Columnas apiladas |
 
-## Regla general
+## Reglas Generales
 
-Cualquier componente nuevo que no esté explícitamente cubierto en esta tabla debe diseñarse mobile-first por defecto: primero la versión mobile, luego se expande para tablet/desktop — nunca al revés.
+- Los inputs en mobile deben tener `font-size >= 16px`.
+- Ningun texto, precio, boton o input debe salirse de su contenedor.
+- Evitar scroll horizontal.
+- El video del hero debe mantener identidad visual sin invadir el texto.
+- Efectos pesados pueden reducirse en mobile si no alteran la experiencia principal.
+- Respetar `prefers-reduced-motion` en todos los breakpoints.

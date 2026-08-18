@@ -1,62 +1,60 @@
-# PROJECT_SPEC — Artech
+# PROJECT_SPEC - Artech
 
-## 1. Qué es Artech
+## 1. Que es Artech
 
-Artech es un e-commerce de electrónica y tecnología. El nombre combina **"Arte"** (dinamismo, evolución hacia el futuro) + **"Tech"** (tecnología).
+ARTECH es un e-commerce de electronica y tecnologia. El nombre combina una identidad visual sobria con una experiencia de compra moderna, clara y accesible.
 
-- **Logo:** símbolo **λ (lambda)** + wordmark "Artech". La lambda es parte definitiva de la identidad de marca, no un placeholder.
-- **Personalidad de marca:** minimalista premium, inspirada en Apple / Samsung. Transmite tecnología, elegancia, calidad y modernidad, sin sentirse exclusiva ni intimidante — debe ser accesible para cualquier usuario.
+- **Logo:** isotipo estilizado usado en navbar/favicon + wordmark "Artech".
+- **Personalidad de marca:** premium, minimalista, tecnologica y monocromatica. El sitio debe sentirse moderno sin volverse intimidante ni perder claridad de compra.
 
-## 2. Qué vende
+## 2. Que vende
 
-Electrónica y tecnología en general, con foco principal en:
+Electronica y tecnologia en general, con foco principal en:
 
 - Celulares
-- Tarjetas gráficas (GPU)
+- Tarjetas graficas (GPU)
 - Memoria RAM
 - Procesadores (CPU)
 - Monitores
+- Perifericos
 
-Categorías secundarias: Periféricos, Componentes, Consolas, Accesorios (auriculares, etc.).
-
-No es una tienda "gamer nicho" — es una tienda de tecnología general con un catálogo fuerte en componentes de PC.
+No es una tienda gamer de nicho. Es una tienda de tecnologia general con catalogo fuerte en componentes de PC.
 
 ## 3. Audiencia
 
-Consumidores generales interesados en tecnología — no exclusivamente gamers ni exclusivamente profesionales. La experiencia debe sentirse tan cómoda para alguien comprando un celular como para alguien comprando una tarjeta gráfica.
+Consumidores generales interesados en tecnologia. La experiencia debe funcionar tanto para alguien que busca un celular como para alguien que compara una tarjeta grafica o un monitor.
 
 ## 4. Alcance de esta etapa
 
-**En esta etapa se construye el frontend completo.** Reglas de alcance:
+El frontend esta implementado con datos mock y estado local persistente donde corresponde. La integracion con backend real queda para una fase futura.
 
-| Incluido en esta etapa | Fuera de alcance (fase futura) |
+| Incluido actualmente | Pendiente para fases futuras |
 |---|---|
-| Todas las páginas y componentes visuales | Backend real, base de datos |
-| Interacciones de UI (carritos, filtros, login visual) | Autenticación real (login funcional) |
-| Datos de producto simulados (mock) | Pasarela de pago real |
-| Estructura de datos preparada para conectar a una API futura | Reseñas y calificaciones de usuarios |
-| — | Favoritos / Wishlist |
-| — | Multi-idioma (i18n) |
-| — | Blog, comparador de productos, programa de referidos (ideas abiertas, no definidas) |
+| Home, catalogo, paginas de producto, carrito y cuenta | Backend real y base de datos |
+| Interacciones de UI: filtros, busqueda, carrito, login/registro mock | Autenticacion real |
+| Datos de producto simulados | Pasarela de pago real |
+| Stores locales para carrito, moneda y sesion mock | Inventario, pedidos y ventas reales |
+| Responsive y QA funcional E2E | Panel administrativo, empleados, POS/caja |
 
-El login/registro, el carrito y el panel de usuario se construyen **visual y funcionalmente en el frontend** (estado local, mock), pero sin conexión real a un backend de autenticación o pagos. Ver `API_CONTRACT.md` para la forma de datos que debe respetar esta capa mock, de modo que conectar el backend real más adelante no requiera rediseñar componentes.
+El login/registro, el carrito y el panel de usuario funcionan en el frontend mediante mocks. No hay validacion de credenciales real, tokens, OAuth ni pagos.
 
 ## 5. Mapa del sitio
 
-| Ruta | Página |
+| Ruta | Pagina |
 |---|---|
 | `/` | Home |
-| `/catalogo` | Catálogo (con filtros y paginación) |
-| `/producto/[slug]` | Página de producto individual |
-| `/carrito` | Carrito (también accesible como drawer global desde cualquier página) |
-| `/cuenta` | Panel de usuario (requiere sesión mock) |
-| Login / Registro | Modal o pantalla propia, accesible desde el ícono de cuenta en el navbar (ver `COMPONENTS.md`) |
+| `/catalogo` | Catalogo con filtros y paginacion |
+| `/producto/[slug]` | Pagina de producto individual |
+| `/carrito` | Pagina de carrito |
+| `/cuenta` | Panel de usuario con sesion mock |
+| Login / Registro | Modal global accesible desde cuenta o desde el gate de compra |
 
-Convención de rutas de producto: **slug legible**, ej. `/producto/rtx-5080` (nunca ID numérico, por SEO).
+Convencion de rutas de producto: slug legible, por ejemplo `/producto/rtx-5080`, no ID numerico.
 
-## 6. Reglas de negocio no negociables
+## 6. Reglas de negocio
 
-- **Moneda:** el sitio soporta **Quetzales (GTQ) y Dólares (USD)**, con un selector que permite al usuario cambiar entre ambas. Todo componente que muestre precio debe considerar esta dualidad desde el diseño de datos (ver `API_CONTRACT.md`).
-- **Idioma:** español únicamente en esta etapa. No implementar i18n todavía, pero tampoco hardcodear texto de forma que bloquee agregarlo después (evitar texto embebido en imágenes, por ejemplo).
-- **Regla de assets — NO NEGOCIABLE:** ningún logo, imagen de producto, ícono de marca o foto se genera ni se descarga de internet durante el desarrollo. Todo el código debe incluir **espacios reservados (placeholders) claramente marcados** (ej. comentario `{/* LOGO AQUÍ: reemplazar con archivo del cliente */}` o nombre de archivo esperado `[IMAGEN PRODUCTO: nombre-producto.png]`) para que el dueño del proyecto suba sus propios archivos manualmente. Esto aplica a: logo, íconos de marcas (Apple, NVIDIA, etc.), y todas las fotos de producto.
-- **Recomendación de formato de imagen de producto:** el proyecto asume que las fotos de producto vendrán con fondo negro o transparente, para integrarse sin bordes visibles dentro del patrón de tarjeta definido en `UI_RULES.md`.
+- **Moneda:** el sitio soporta Quetzales (GTQ) y Dolares (USD). Todo componente que muestre precio debe leer la moneda seleccionada desde el store global.
+- **Idioma:** espanol en esta etapa. No existe selector de idioma ni estructura i18n completa.
+- **Datos mock:** los productos, marcas y categorias viven en `lib/data/` y se consumen mediante `lib/services/`.
+- **Assets:** las imagenes actuales viven en `public/assets/` o `public/videos/`. Los datos mock deben apuntar a assets propios del proyecto o placeholders claros, nunca depender de URLs externas no controladas.
+- **Backend futuro:** cualquier integracion real debe mantener la forma de datos documentada en `API_CONTRACT.md` o actualizar ese contrato antes de cambiar servicios y componentes.

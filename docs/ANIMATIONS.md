@@ -1,61 +1,97 @@
-# ANIMATIONS — Artech
+# ANIMATIONS - Artech
 
-Especificación exacta de cada animación del sitio. Regla general: el sitio anima **solo donde aporta valor** — si una sección no necesita movimiento, permanece completamente estática. Toda animación debe respetar `prefers-reduced-motion` (ver sección 7).
+ARTECH usa movimiento sutil y coordinado. La experiencia debe sentirse premium y rapida: las animaciones acompanan la lectura, no reemplazan la funcionalidad.
 
-## 1. Fondo de partículas (global)
+Toda animacion decorativa debe respetar `prefers-reduced-motion`.
 
-- **Dónde:** presente en **todas las páginas** del sitio, de fondo, detrás de todo el contenido.
-- **Implementación recomendada:** Canvas API nativo (vanilla JS/TS), sin librería externa — decisión de arquitectura para mantener el sitio ligero (ver `ARCHITECTURE.md`).
-- **Comportamiento:** puntos pequeños (radio ~0.5–1.5px), color `particle-color` (ver `DESIGN_SYSTEM.md`), cantidad aproximada: 40–50 partículas en pantallas desktop (ajustar proporcionalmente en mobile por rendimiento).
-- **Movimiento:** desplazamiento lento y continuo en direcciones aleatorias, rebotando suavemente en los bordes del contenedor. Sin pausas, sin interacción del usuario requerida — es un efecto ambiental constante.
-- **Rendimiento:** en dispositivos móviles de gama baja, reducir la cantidad de partículas o la velocidad si se detecta impacto en el rendimiento.
+## 1. Hero Video Background
 
-## 2. Aparición de secciones al hacer scroll
+El hero principal usa un video local como fondo visual definitivo:
 
-- **Trigger:** cuando la sección entra en el viewport.
-- **Efecto:** fade-in + desplazamiento vertical leve (8–16px hacia arriba, terminando en su posición final).
-- **Duración:** 400–600ms.
-- **Easing:** ease-out.
-- **Regla:** solo se aplica a secciones donde el movimiento ayuda a la lectura/jerarquía (ej. entrada del Home). Elementos que no lo necesitan permanecen estáticos.
+- Archivo principal: `public/videos/artech-hero-background-pingpong.mp4`.
+- Poster: `public/videos/artech-hero-poster.jpg`.
+- Atributos esperados: `autoplay`, `muted`, `loop`, `playsInline`, sin controles.
+- Debe quedar detras de toda la UI y no bloquear clicks.
+- Se pausa o reduce actividad cuando el hero esta fuera del viewport.
+- En `prefers-reduced-motion`, se evita animacion compleja y se prioriza poster/estado estable.
 
-## 3. Hover en tarjeta de producto
+La entrada del video se materializa desde negro con opacidad, escala, brillo y blur controlados. Despues continua reproduciendose normalmente.
 
-- **Trigger:** cursor sobre una `ProductCard`.
-- **Efecto combinado:**
-  - Elevación: `translateY(-4px)` aproximadamente.
-  - Sombra: transición de `shadow-card` a `shadow-card-elevated` (ver `DESIGN_SYSTEM.md`).
-  - Rotación 3D sutil: 2°–4°, dando sensación de volumen (no es un giro completo, es una inclinación leve que sigue la posición del cursor si es viable, o un valor fijo si se simplifica).
-- **Duración:** ~300ms, ease.
+## 2. Fondo Ambiental Global
 
-## 4. Carrusel con auto-scroll (Ofertas, Novedades destacadas, "También te puede interesar", secciones de marca/categoría en Catálogo)
+El resto de la pagina mantiene continuidad visual con el hero mediante halos, trails y gradientes monocromaticos muy sutiles en CSS. No debe sentirse como secciones rectangulares independientes.
 
-Todos los carruseles del sitio comparten el mismo comportamiento — consistencia total:
+Intensidad recomendada:
 
-- **Avance automático:** cada **3.5 segundos**, avanza una tarjeta a la vez (no es un scroll continuo tipo cinta, son pasos discretos con transición suave entre cada uno).
-- **Transición entre tarjetas:** deslizamiento suave, nunca corte abrupto.
-- **Loop:** infinito — al llegar a la última tarjeta, vuelve a la primera sin salto brusco.
-- **Pausa manual:** el usuario puede mantener presionado (mouse down / touch start) sobre el carrusel para pausar el auto-avance; al soltar (mouse up / touch end), el auto-avance se reanuda.
-- **Control manual:** flechas prev/next siempre visibles, permiten navegar sin esperar al auto-avance.
-- **Indicador visual:** la tarjeta actualmente "activa" se muestra a opacidad completa; las siguientes en la fila se muestran con opacidad reducida progresiva, insinuando el movimiento.
+- Hero: maxima presencia visual.
+- Contenido: 10% a 30% de intensidad.
+- Footer: retorno gradual a negro profundo.
 
-## 5. Borde RGB animado (exclusivo tarjetas GPU)
+## 3. Reveals al Scroll
 
-- **Dónde:** únicamente en `ProductCard` de tarjetas gráficas / productos con iluminación RGB (ver regla de uso en `UI_RULES.md`).
-- **Efecto:** borde de la tarjeta con un degradado cónico (`conic-gradient`) que recorre los colores de `accent-rgb` (ver `DESIGN_SYSTEM.md`) en un giro completo de 360°.
-- **Duración del ciclo:** ~4 segundos, loop infinito, velocidad constante (no ease, movimiento lineal).
-- **Es la única animación continua e ininterrumpida del sitio** — todas las demás son disparadas por eventos (scroll, hover, click).
+`ScrollReveal` activa entradas suaves cuando el contenido entra al viewport:
 
-## 6. Login — animación de panel deslizante
+- Propiedades principales: `opacity`, `transform`, blur ligero y masks cuando corresponda.
+- Desplazamientos pequenos.
+- Stagger relajado en grupos de cards.
+- Evitar animar layout (`top`, `left`, `width`, `height`) durante scroll.
 
-- **Mecanismo:** ambos formularios (Iniciar sesión, Crear cuenta) existen simultáneamente en el DOM, uno al lado del otro. Un panel oscuro (`surface-panel-dark`) se desliza por encima cubriendo uno de los dos lados.
-- **Propiedad animada:** `transform: translateX()`.
-- **Duración:** 0.6 segundos.
-- **Easing:** `cubic-bezier(0.65, 0, 0.35, 1)`.
-- **Estados:**
-  - Estado "Iniciar sesión" activo: panel oscuro en `translateX(0%)` (posición izquierda), formulario de "Crear cuenta" visible a la derecha.
-  - Estado "Crear cuenta" activo: panel oscuro en `translateX(100%)` (posición derecha), formulario de "Iniciar sesión" visible a la izquierda.
-- **Botón dentro del panel oscuro:** al presionarlo (estado `:active`), invierte momentáneamente sus colores (de blanco-sobre-negro a negro-sobre-blanco) como feedback táctil, luego dispara el cambio de estado descrito arriba.
+## 4. Carrusel de Ofertas
 
-## 7. Accesibilidad del movimiento
+El carrusel principal usa Embla Carousel:
 
-Toda animación de esta especificación debe respetar la media query `prefers-reduced-motion: reduce`: en ese caso, se deben eliminar o reducir a un mínimo imperceptible las animaciones de partículas, hover 3D, y transiciones de scroll — sin eliminar funcionalidad, solo el movimiento decorativo.
+- Autoplay cada 4.5 segundos aproximadamente.
+- No debe pausarse por hover.
+- Flechas e indicadores permiten control manual.
+- Tras interaccion manual, el autoplay se reinicia de forma razonable.
+- En `prefers-reduced-motion`, reducir transicion y priorizar control manual.
+
+## 5. AutoScrollCarousel Reutilizable
+
+Para carruseles secundarios:
+
+- Loop cuando haya suficientes elementos.
+- Transicion suave entre slides.
+- Controles manuales accesibles.
+- Evitar saltos bruscos o timers sin cleanup.
+
+## 6. ProductCard
+
+Hover:
+
+- Elevacion o highlight sutil.
+- Imagen con scale maximo cercano a `1.02`.
+- CTA con mayor contraste.
+- Sin rebotes ni tilt exagerado.
+
+La accion de click debe dar feedback desde el primer frame.
+
+## 7. Borde RGB
+
+El borde RGB se usa solo en GPUs con `hasRgbLighting: true`.
+
+- Implementacion: borde con degradado conico animado.
+- Giro 360 grados continuo.
+- Velocidad constante.
+- Glow controlado.
+- En reduced motion, conservar el borde sin animacion continua.
+
+## 8. AuthPanel
+
+El modal de autenticacion:
+
+- Aparece con overlay oscuro y blur del fondo.
+- La card entra con opacidad, `translateY` pequeno y scale leve.
+- Duracion aproximada: 450ms a 700ms.
+- Cierre con Escape y retorno de foco.
+- Formularios con estados de loading y mensajes visibles.
+
+## 9. Microinteracciones
+
+Aplican a botones, links, iconos, navbar, buscador, carrito, filtros e imagenes:
+
+- Feedback inmediato en click.
+- Press scale pequeno.
+- Hover de luz o borde, nunca glow exagerado.
+- Duraciones cortas para feedback y mas lentas para reveals.
+- Cleanup de listeners, intervals y observers.

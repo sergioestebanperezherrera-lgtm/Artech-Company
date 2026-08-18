@@ -1,102 +1,110 @@
-# ARCHITECTURE — Artech
+# ARCHITECTURE - Artech
 
-## 1. Stack tecnológico
+## 1. Stack Tecnologico
 
-| Capa | Tecnología | Justificación |
+| Capa | Tecnologia | Uso |
 |---|---|---|
-| Framework | **Next.js (App Router) + TypeScript** | Routing por archivos alineado con el mapa del sitio (`PROJECT_SPEC.md`); preparado para SEO en páginas de producto; camino directo a agregar backend (API routes / server actions) sin migrar de framework |
-| Estilos | **Tailwind CSS** | Permite mapear los tokens de `DESIGN_SYSTEM.md` como configuración reutilizable; acelera el desarrollo mobile-first |
-| Estado global | **Zustand** | Carrito, moneda seleccionada, sesión mock — más liviano que Redux, suficiente para el alcance actual |
-| Animaciones de UI | **Framer Motion** | Fade/slide-in en scroll, hover con volumen — buen soporte para animaciones disparadas por viewport y fácil de desactivar con `prefers-reduced-motion` |
-| Fondo de partículas | **Canvas API nativo (vanilla, sin librería)** | Decisión explícita de mantener este efecto lo más ligero posible, sin dependencia externa |
-| Carruseles | **Embla Carousel** | Ligero, excelente soporte táctil (crítico por el enfoque mobile-first), personalizable para el comportamiento de auto-scroll + pausa definido en `ANIMATIONS.md` |
-| Utilidades | `clsx` + `tailwind-merge` | Manejo de clases condicionales (ej. estado "Agotado", variantes de botón) |
+| Framework | Next.js App Router + React | Rutas, paginas, layout global y renderizado |
+| Lenguaje | TypeScript | Tipado de componentes, datos y stores |
+| Estilos | Tailwind CSS + CSS variables | Tokens, responsive, Liquid Glass y animaciones CSS |
+| Estado global | Zustand + persist middleware | Carrito, moneda y sesion mock |
+| Carruseles | Embla Carousel | Carrusel de ofertas y carruseles reutilizables |
+| Iconos | Lucide React | Iconografia de linea |
+| QA funcional | Playwright | Pruebas E2E basicas |
 
-## 2. Estructura de carpetas
+No hay backend implementado en esta etapa.
 
-```
+## 2. Estructura de Carpetas
+
+```text
 artech/
 ├── app/
-│   ├── layout.tsx                  # Layout raíz: ParticlesBackground + Navbar + Footer envolviendo todas las páginas
-│   ├── page.tsx                    # Home
-│   ├── globals.css                 # Tokens de diseño como CSS variables
-│   ├── catalogo/
-│   │   └── page.tsx
-│   ├── producto/
-│   │   └── [slug]/
-│   │       └── page.tsx
-│   ├── carrito/
-│   │   └── page.tsx
-│   └── cuenta/
-│       └── page.tsx
-│
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── globals.css
+│   ├── catalogo/page.tsx
+│   ├── producto/[slug]/page.tsx
+│   ├── carrito/page.tsx
+│   └── cuenta/page.tsx
 ├── components/
-│   ├── ui/                         # Button, IconCircleButton, Badge, Card
-│   ├── layout/                     # Navbar, Footer, ParticlesBackground, MobileMenu
-│   ├── product/                    # ProductCard, ProductGallery, SpecsTable
-│   ├── carousel/                   # AutoScrollCarousel
-│   ├── catalog/                    # FilterPanel, Pagination
-│   ├── cart/                       # CartDrawer, CartItem, CartSummary
-│   ├── auth/                       # AuthPanel, SignInForm, SignUpForm
-│   └── user/                       # UserProfileCard, OrdersEmptyState
-│
+│   ├── auth/
+│   ├── brand/
+│   ├── carousel/
+│   ├── cart/
+│   ├── catalog/
+│   ├── home/
+│   ├── layout/
+│   ├── motion/
+│   ├── product/
+│   ├── ui/
+│   └── user/
 ├── lib/
-│   ├── types/                      # Interfaces TypeScript (Product, Category, CartItem, User, Order)
-│   ├── data/                       # Datos mock, con la misma forma que la futura API (ver API_CONTRACT.md)
-│   ├── services/                   # Capa de acceso a datos — hoy lee de /data, mañana hace fetch real
-│   └── utils/                      # formatPrice, slugify, etc.
-│
-└── public/
-    └── placeholders/                # Espacio para logo, íconos de marca y fotos de producto del cliente
+│   ├── data/
+│   ├── services/
+│   ├── stores/
+│   ├── types/
+│   └── utils/
+├── public/
+│   ├── assets/
+│   ├── videos/
+│   └── favicon.svg
+├── tests/
+└── docs/
 ```
 
-Ver el detalle de qué contiene cada componente en `COMPONENTS.md`.
+## 3. Separacion Pagina / Componente
 
-## 3. Regla de separación: página vs. componente
+- Las paginas de `app/` componen vistas, consultan services y pasan props.
+- Los componentes de `components/` contienen la UI reutilizable y la logica de interaccion.
+- Si una pieza aparece en mas de una pantalla, debe vivir como componente compartido.
 
-- **Página** (`app/.../page.tsx`): solo compone. Decide qué secciones van y en qué orden, pasa datos a los componentes vía props. No contiene lógica visual propia ni estilos complejos.
-- **Componente** (`components/`): contiene la lógica visual y de interacción. Si una pieza de UI aparece en más de un lugar, **es un componente**, nunca código duplicado dentro de una página.
+Ejemplo: `ProductCard` se usa en Home, catalogo y productos relacionados; cualquier cambio de comportamiento comun debe hacerse ahi.
 
-Ejemplo: `ProductCard` se construye una sola vez y se usa en Home, Catálogo y página de producto (ver `COMPONENTS.md`). Si cambia el diseño de la tarjeta, se edita en un solo archivo.
+## 4. Capa de Datos
 
-## 4. Mapa de dependencias (orden de construcción)
+El proyecto usa datos mock, pero organizados para poder reemplazarse por API real:
 
-```
-Tokens de diseño (DESIGN_SYSTEM.md)
-        │
-        ▼
-Átomos de UI (Button, IconCircleButton, Badge, Card)
-        │
-        ├──────────────┬─────────────────┐
-        ▼              ▼                 ▼
-ParticlesBackground   Navbar/Footer   ProductCard
-        │              │                 │
-        └──────┬───────┘                 │
-               ▼                         ▼
-        Layout global              AutoScrollCarousel
-               │                         │
-               └───────────┬─────────────┘
-                            ▼
-                    Home (ensambla todo)
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-          Catálogo    Página Producto   Carrito
-        (+ FilterPanel) (+ Gallery,      (+ CartDrawer)
-                          SpecsTable)
-                            │
-                            ▼
-                  Panel de Usuario / Login
-```
+1. `lib/types/`: modelos TypeScript.
+2. `lib/data/`: productos, categorias y marcas mock.
+3. `lib/services/`: capa de acceso a datos. Los componentes deben consumir services, no importar directamente `lib/data/`.
+4. `lib/stores/`: estado global de carrito, moneda y sesion mock.
+5. `lib/utils/`: utilidades como formato de precios, busqueda y clases.
 
-`ProductCard` y `AutoScrollCarousel` son los componentes con más dependencias hacia adelante — se construyen y prueban temprano para no rehacerlos varias veces. Ver el orden completo por fases en `ROADMAP.md`.
+Cuando exista backend, el cambio principal deberia concentrarse en `lib/services/` y en la capa de autenticacion/persistencia, no en las cards o pantallas.
 
-## 5. Capa de datos — preparación para backend futuro
+## 5. Persistencia Local
 
-El proyecto no tiene backend en esta etapa, pero la capa de datos se estructura para que conectarlo después no requiera reescribir componentes:
+Actualmente se persiste en `localStorage` mediante Zustand:
 
-1. **`lib/types/`** — define las interfaces con la forma exacta que tendría una respuesta de API real (ver `API_CONTRACT.md`).
-2. **`lib/data/`** — archivos mock con la misma estructura que tendría el JSON de una API real.
-3. **`lib/services/`** — capa intermedia (ej. `productService.getAll()`, `productService.getBySlug(slug)`) que hoy lee de `lib/data/` y en el futuro solo cambia su implementación interna a un `fetch`. **Los componentes llaman siempre a `lib/services/`, nunca directamente a los datos mock.**
-4. **`useAuth()`** — hook aislado que hoy simula sesión (para el gate de "requiere cuenta" del carrito); mañana se conecta a autenticación real sin tocar los componentes que lo consumen.
-5. **Estado del carrito (Zustand)** — hoy vive solo en memoria del navegador; mañana se sincroniza con backend cambiando solo la capa de persistencia, no la lógica de UI.
+- Carrito.
+- Moneda seleccionada.
+- Sesion mock.
+
+Esta persistencia es local y temporal. No representa autenticacion real ni sincronizacion con servidor.
+
+## 6. Layout Global
+
+`app/layout.tsx` monta la estructura global. La UI transversal se concentra en:
+
+- `Navbar`
+- `Footer`
+- `GlobalOverlays`
+- `CartDrawer`
+- `AuthPanel`
+
+`GlobalOverlays` permite abrir carrito y autenticacion desde distintas rutas sin duplicar modales.
+
+## 7. Movimiento y Fondos
+
+- El hero usa `HeroVideoBackground` con video local en `public/videos/`.
+- Los reveals se gestionan mediante `ScrollReveal` y CSS.
+- El fondo ambiental y el material Liquid Glass viven principalmente en `globals.css`.
+- Las animaciones decorativas deben respetar `prefers-reduced-motion`.
+
+## 8. Convenciones Tecnicas
+
+- Usar tokens CSS/Tailwind en lugar de valores visuales hardcodeados repetidamente.
+- Mantener TypeScript estricto en props y modelos.
+- Mantener texto visible en espanol.
+- Mantener nombres de archivos, variables y funciones en ingles.
+- No introducir backend, OAuth, pagos o datos reales sin actualizar primero el alcance y `API_CONTRACT.md`.
