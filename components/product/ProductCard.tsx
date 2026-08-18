@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
@@ -25,6 +26,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const price = formatPrice(getProductPrice(product, currency), currency);
   const imagePlaceholder =
     product.images[0] ?? "/placeholders/productos/producto.png";
+  const productHref = `/producto/${product.slug}`;
 
   useEffect(() => {
     return () => {
@@ -60,7 +62,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
         !product.hasRgbLighting && className,
       )}
     >
-      <div className="artech-product-card-media relative aspect-[4/3] overflow-hidden rounded-image-inset bg-surface-card-inset">
+      <Link
+        href={productHref}
+        aria-label={`Ver detalle de ${product.name}`}
+        className="artech-product-card-media relative block aspect-[4/3] overflow-hidden rounded-image-inset bg-surface-card-inset focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+      >
         <div className="absolute left-2 top-2 z-10 flex flex-wrap gap-2 sm:left-3 sm:top-3">
           {product.discountPercent ? (
             <Badge variant="discount" label={`-${product.discountPercent}%`} />
@@ -78,10 +84,13 @@ export function ProductCard({ product, className }: ProductCardProps) {
             className="h-full w-full"
           />
         </div>
-      </div>
+      </Link>
 
       <div className="flex min-w-0 flex-1 flex-col px-1 pb-1 pt-3 sm:pt-4">
-        <div className="min-h-[7rem] sm:min-h-[7.5rem]">
+        <Link
+          href={productHref}
+          className="block min-h-[7rem] rounded-input focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 sm:min-h-[7.5rem]"
+        >
           <h2 className="break-words text-sm font-medium leading-5 text-text-primary-on-light sm:text-base sm:leading-6">
             {product.name}
           </h2>
@@ -92,17 +101,20 @@ export function ProductCard({ product, className }: ProductCardProps) {
               </li>
             ))}
           </ul>
-        </div>
+        </Link>
 
-        <p className="mt-4 break-words text-base font-medium text-text-primary-on-light sm:text-lg">
+        <Link
+          href={productHref}
+          className="mt-4 block rounded-input break-words text-base font-medium text-text-primary-on-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 sm:text-lg"
+        >
           {price}
-        </p>
+        </Link>
 
         <div className="mt-5 grid gap-2">
           <Button
             variant="outline-on-light"
             className="w-full px-3 text-[13px] leading-5 sm:px-4 sm:text-sm"
-            onClick={() => router.push(`/producto/${product.slug}`)}
+            onClick={() => router.push(productHref)}
           >
             Más información
           </Button>

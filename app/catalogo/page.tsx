@@ -15,6 +15,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   return (
     <CatalogView
+      key={`${params?.categoria ?? ""}:${params?.buscar ?? ""}`}
       products={productService.getAll()}
       categories={categoryService.getAll()}
       brands={brandService.getAll()}

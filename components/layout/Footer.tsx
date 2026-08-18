@@ -28,6 +28,12 @@ const footerSections = [
   },
 ];
 
+const socialLinks: Array<{ label: string; href: string | null }> = [
+  { label: "Instagram", href: null },
+  { label: "Facebook", href: null },
+  { label: "X", href: null },
+];
+
 export function Footer() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -109,9 +115,26 @@ export function Footer() {
       <div className="artech-footer-bottom mx-auto mt-10 flex max-w-6xl flex-col gap-3 pt-6 text-sm text-text-secondary-on-dark sm:flex-row sm:items-center sm:justify-between">
         <p>© 2026 Artech. Todos los derechos reservados.</p>
         <div className="flex gap-4" aria-label="Redes sociales">
-          <span>Instagram</span>
-          <span>Facebook</span>
-          <span>X</span>
+          {socialLinks.map((social) =>
+            social.href ? (
+              <Link
+                key={social.label}
+                href={social.href}
+                className="artech-footer-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+              >
+                {social.label}
+              </Link>
+            ) : (
+              <span
+                key={social.label}
+                aria-disabled="true"
+                title="URL oficial pendiente"
+                className="cursor-default text-text-secondary-on-dark/70"
+              >
+                {social.label}
+              </span>
+            ),
+          )}
         </div>
       </div>
     </footer>

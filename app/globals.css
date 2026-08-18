@@ -408,6 +408,14 @@ textarea::placeholder {
   }
 }
 
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 .artech-hero-section {
   background: transparent;
   overflow: visible;
@@ -2043,6 +2051,19 @@ textarea::placeholder {
     transform 580ms var(--ease-cinematic),
     opacity 580ms var(--ease-cinematic),
     box-shadow 580ms var(--ease-cinematic);
+}
+
+.auth-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 30;
+}
+
+.artech-page-shell > .catalog-mobile-filter-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
 }
 
 @starting-style {

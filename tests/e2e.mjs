@@ -167,7 +167,13 @@ try {
     });
 
     await page.getByRole("button", { name: "Cuenta" }).click();
-    await page.getByRole("button", { name: "Entrar" }).click();
+    const signInForm = page
+      .locator('[role="dialog"] form')
+      .filter({ has: page.getByRole("button", { name: "Entrar" }) })
+      .first();
+    await signInForm.locator('input[type="email"]').fill("cliente@artech.local");
+    await signInForm.locator('input[autocomplete="current-password"]').fill("demo1234");
+    await signInForm.getByRole("button", { name: "Entrar" }).click();
     await page.waitForURL(/\/cuenta/);
     await page.getByRole("heading", { name: /Hola,/ }).waitFor({ state: "visible" });
     await page.getByRole("button", { name: /Cerrar sesión/i }).click();
@@ -178,7 +184,14 @@ try {
       .locator("button")
       .filter({ hasText: "Crear cuenta", visible: true })
       .click();
-    await page.getByRole("button", { name: "Registrarme" }).click();
+    const signUpForm = page
+      .locator('[role="dialog"] form')
+      .filter({ has: page.getByRole("button", { name: "Registrarme" }) })
+      .first();
+    await signUpForm.locator('input[autocomplete="name"]').fill("Cliente Artech");
+    await signUpForm.locator('input[type="email"]').fill("nuevo@artech.local");
+    await signUpForm.locator('input[autocomplete="new-password"]').fill("demo1234");
+    await signUpForm.getByRole("button", { name: "Registrarme" }).click();
     await page.waitForURL(/\/cuenta/);
     await page.getByRole("heading", { name: /Hola,/ }).waitFor({ state: "visible" });
     await context.close();

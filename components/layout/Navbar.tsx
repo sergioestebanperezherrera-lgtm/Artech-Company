@@ -360,7 +360,7 @@ export function Navbar() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar"
-              className="artech-liquid-glass-field h-10 w-full rounded-pill px-4 text-sm text-text-primary-on-dark placeholder:text-text-secondary-on-dark"
+              className="artech-liquid-glass-field h-10 w-full rounded-pill px-4 text-base text-text-primary-on-dark placeholder:text-text-secondary-on-dark"
             />
             {query.trim() ? (
               <div className="artech-liquid-glass-popover mt-3 rounded-card p-3">

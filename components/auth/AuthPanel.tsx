@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Eye, EyeOff, X } from "lucide-react";
 import { LogoMark } from "@/components/brand";
 import { Button, Card, IconCircleButton } from "@/components/ui";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
@@ -25,11 +25,23 @@ type AuthPanelProps = {
 };
 
 type SignInFormProps = {
+  idPrefix: string;
   onSuccess: () => void;
 };
 
 type SignUpFormProps = {
+  idPrefix: string;
   onSuccess: () => void;
+};
+
+type PasswordFieldProps = {
+  id: string;
+  value: string;
+  isVisible: boolean;
+  autoComplete: "current-password" | "new-password";
+  hasError: boolean;
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
 };
 
 function SocialButtons() {
@@ -64,6 +76,45 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+function PasswordField({
+  id,
+  value,
+  isVisible,
+  autoComplete,
+  hasError,
+  onChange,
+  onToggleVisibility,
+}: PasswordFieldProps) {
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={isVisible ? "text" : "password"}
+        required
+        minLength={6}
+        autoComplete={autoComplete}
+        value={value}
+        placeholder="Mínimo 6 caracteres"
+        aria-invalid={hasError}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-input border border-border-on-light px-3 pr-12 text-base text-text-primary-on-light"
+      />
+      <button
+        type="button"
+        aria-label={isVisible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-input text-text-secondary-on-light transition-colors hover:text-text-primary-on-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        onClick={onToggleVisibility}
+      >
+        {isVisible ? (
+          <EyeOff aria-hidden="true" size={17} strokeWidth={1.5} />
+        ) : (
+          <Eye aria-hidden="true" size={17} strokeWidth={1.5} />
+        )}
+      </button>
+    </div>
+  );
+}
+
 function isElementVisible(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
   const styles = window.getComputedStyle(element);
@@ -89,13 +140,15 @@ function getVisibleFocusableElements(container: HTMLElement | null) {
   return Array.from(focusableElements).filter(isElementVisible);
 }
 
-function SignInForm({ onSuccess }: SignInFormProps) {
+function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
   const signIn = useAuthStore((state) => state.signIn);
-  const [email, setEmail] = useState("cliente@artech.local");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordId = `${idPrefix}-password`;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,6 +202,9 @@ function SignInForm({ onSuccess }: SignInFormProps) {
       <p className="text-center text-sm text-text-secondary-on-light">
         O con tu correo
       </p>
+      <p className="rounded-input bg-surface-card-inset/5 px-3 py-2 text-center text-xs leading-5 text-text-secondary-on-light">
+        Demo: usa cualquier correo válido y una contraseña de 6+ caracteres.
+      </p>
       <label className="grid gap-2 text-sm text-text-secondary-on-light">
         Email
         <input
@@ -156,30 +212,30 @@ function SignInForm({ onSuccess }: SignInFormProps) {
           required
           autoComplete="email"
           value={email}
+          placeholder="tu@email.com"
           aria-invalid={Boolean(error) && !isValidEmail(email)}
           onChange={(event) => {
             setEmail(event.target.value);
             setError("");
             setStatusMessage("");
           }}
-          className="h-11 rounded-input border border-border-on-light px-3 text-text-primary-on-light"
+          className="h-11 rounded-input border border-border-on-light px-3 text-base text-text-primary-on-light"
         />
       </label>
       <label className="grid gap-2 text-sm text-text-secondary-on-light">
         Contraseña
-        <input
-          type="password"
-          required
-          minLength={6}
-          autoComplete="current-password"
+        <PasswordField
+          id={passwordId}
           value={password}
-          aria-invalid={Boolean(error) && password.length < 6}
-          onChange={(event) => {
-            setPassword(event.target.value);
+          autoComplete="current-password"
+          isVisible={isPasswordVisible}
+          hasError={Boolean(error) && password.length < 6}
+          onToggleVisibility={() => setIsPasswordVisible((current) => !current)}
+          onChange={(nextPassword) => {
+            setPassword(nextPassword);
             setError("");
             setStatusMessage("");
           }}
-          className="h-11 rounded-input border border-border-on-light px-3 text-text-primary-on-light"
         />
       </label>
       {error ? (
@@ -205,14 +261,16 @@ function SignInForm({ onSuccess }: SignInFormProps) {
   );
 }
 
-function SignUpForm({ onSuccess }: SignUpFormProps) {
+function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
   const signUp = useAuthStore((state) => state.signUp);
-  const [name, setName] = useState("Cliente Artech");
-  const [email, setEmail] = useState("nuevo@artech.local");
-  const [password, setPassword] = useState("demo1234");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const passwordId = `${idPrefix}-password`;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -280,13 +338,14 @@ function SignUpForm({ onSuccess }: SignUpFormProps) {
           required
           autoComplete="name"
           value={name}
+          placeholder="Nombre y apellido"
           aria-invalid={Boolean(error) && name.trim().length < 2}
           onChange={(event) => {
             setName(event.target.value);
             setError("");
             setStatusMessage("");
           }}
-          className="h-11 rounded-input border border-border-on-light px-3 text-text-primary-on-light"
+          className="h-11 rounded-input border border-border-on-light px-3 text-base text-text-primary-on-light"
         />
       </label>
       <label className="grid gap-2 text-sm text-text-secondary-on-light">
@@ -296,30 +355,30 @@ function SignUpForm({ onSuccess }: SignUpFormProps) {
           required
           autoComplete="email"
           value={email}
+          placeholder="tu@email.com"
           aria-invalid={Boolean(error) && !isValidEmail(email)}
           onChange={(event) => {
             setEmail(event.target.value);
             setError("");
             setStatusMessage("");
           }}
-          className="h-11 rounded-input border border-border-on-light px-3 text-text-primary-on-light"
+          className="h-11 rounded-input border border-border-on-light px-3 text-base text-text-primary-on-light"
         />
       </label>
       <label className="grid gap-2 text-sm text-text-secondary-on-light">
         Contraseña
-        <input
-          type="password"
-          required
-          minLength={6}
-          autoComplete="new-password"
+        <PasswordField
+          id={passwordId}
           value={password}
-          aria-invalid={Boolean(error) && password.length < 6}
-          onChange={(event) => {
-            setPassword(event.target.value);
+          autoComplete="new-password"
+          isVisible={isPasswordVisible}
+          hasError={Boolean(error) && password.length < 6}
+          onToggleVisibility={() => setIsPasswordVisible((current) => !current)}
+          onChange={(nextPassword) => {
+            setPassword(nextPassword);
             setError("");
             setStatusMessage("");
           }}
-          className="h-11 rounded-input border border-border-on-light px-3 text-text-primary-on-light"
         />
       </label>
       {error ? (
@@ -446,7 +505,8 @@ export function AuthPanel({ isOpen, onClose, redirectTo = "/cuenta" }: AuthPanel
           aria-label="Cerrar autenticación"
           icon={<X strokeWidth={1.5} />}
           surface="light"
-          className="absolute right-4 top-4 z-20"
+          className="auth-close-button size-11"
+          style={{ right: "1rem" }}
           onClick={handleClose}
         />
         <div className="lg:hidden">
@@ -473,10 +533,10 @@ export function AuthPanel({ isOpen, onClose, redirectTo = "/cuenta" }: AuthPanel
           </div>
           <div className="px-6 py-12">
             <div className={mode === "sign-in" ? "block" : "hidden"}>
-              <SignInForm onSuccess={handleSuccess} />
+              <SignInForm idPrefix="mobile-sign-in" onSuccess={handleSuccess} />
             </div>
             <div className={mode === "sign-up" ? "block" : "hidden"}>
-              <SignUpForm onSuccess={handleSuccess} />
+              <SignUpForm idPrefix="mobile-sign-up" onSuccess={handleSuccess} />
             </div>
           </div>
         </div>
@@ -487,14 +547,14 @@ export function AuthPanel({ isOpen, onClose, redirectTo = "/cuenta" }: AuthPanel
             aria-hidden={mode !== "sign-up"}
             inert={mode !== "sign-up" ? true : undefined}
           >
-            <SignUpForm onSuccess={handleSuccess} />
+            <SignUpForm idPrefix="desktop-sign-up" onSuccess={handleSuccess} />
           </div>
           <div
             className="px-6 py-16 lg:py-20"
             aria-hidden={mode !== "sign-in"}
             inert={mode !== "sign-in" ? true : undefined}
           >
-            <SignInForm onSuccess={handleSuccess} />
+            <SignInForm idPrefix="desktop-sign-in" onSuccess={handleSuccess} />
           </div>
 
           <div

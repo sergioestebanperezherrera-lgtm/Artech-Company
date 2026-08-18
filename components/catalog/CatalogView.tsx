@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, SearchX, X } from "lucide-react";
 import { Button, IconCircleButton } from "@/components/ui";
 import { ProductCard } from "@/components/product";
@@ -51,6 +51,7 @@ export function CatalogView({
   const [currentPage, setCurrentPage] = useState(1);
   const [isDesktopFilterOpen, setIsDesktopFilterOpen] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const mobileFilterCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -61,6 +62,28 @@ export function CatalogView({
     [brands],
   );
   const searchQuery = initialSearch.trim();
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileFilterOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    window.requestAnimationFrame(() => mobileFilterCloseRef.current?.focus());
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileFilterOpen]);
 
   const specSourceProducts = useMemo(() => {
     if (filters.categories.length === 0) {
@@ -251,16 +274,23 @@ export function CatalogView({
       </div>
 
       {isMobileFilterOpen ? (
-        <div className="fixed inset-0 z-[70] bg-bg-base text-text-primary-on-dark lg:hidden">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filtros del catálogo"
+          className="catalog-mobile-filter-dialog fixed inset-0 z-[70] flex flex-col bg-bg-base text-text-primary-on-dark lg:hidden"
+        >
           <div className="flex h-16 items-center justify-between border-b border-border-on-dark px-6">
             <p className="text-base font-medium">Filtros</p>
             <IconCircleButton
+              ref={mobileFilterCloseRef}
               aria-label="Cerrar filtros"
               icon={<X strokeWidth={1.5} />}
+              className="size-11"
               onClick={() => setIsMobileFilterOpen(false)}
             />
           </div>
-          <div className="h-[calc(100vh-4rem)] overflow-y-auto px-6 py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
             <FilterPanel
               categories={categories}
               brands={brands}
