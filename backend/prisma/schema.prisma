@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InventoryMovementType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGE
+  TRANSFER
+}
+
+enum InventoryMovementDirection {
+  IN
+  OUT
+}
+
+enum SaleChannel {
+  WEB
+  POS
+}
+
+enum SaleStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee Employee?
+  sales    Sale[]    @relation("CustomerSales")
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  roleId    String
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role  Role   @relation(fields: [roleId], references: [id])
+  sales Sale[] @relation("EmployeeSales")
+
+  @@index([roleId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees   Employee[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String
+  sku            String   @unique
+  barcode        String?  @unique
+  price          Decimal  @db.Decimal(12, 2)
+  previousPrice  Decimal? @db.Decimal(12, 2)
+  categoryId     String
+  brandId        String?
+  hasRgbLighting Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category           Category               @relation(fields: [categoryId], references: [id])
+  brand              Brand?                 @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  images             ProductImage[]
+  specifications     ProductSpecification[]
+  inventory          Inventory?
+  inventoryMovements InventoryMovement[]
+  saleItems          SaleItem[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([hasRgbLighting])
+  @@index([isActive])
+  @@index([isFeatured])
+}
+
+model ProductSpecification {
+  id            String   @id @default(cuid())
+  productId     String
+  label         String
+  value         String
+  sortOrder     Int      @default(0)
+  isHighlighted Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, sortOrder])
+  @@index([productId, isHighlighted])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, sortOrder])
+}
+
+model Inventory {
+  id               String   @id @default(cuid())
+  productId        String   @unique
+  physicalQuantity Int      @default(0)
+  reservedQuantity Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model InventoryMovement {
+  id         String                     @id @default(cuid())
+  productId  String
+  type       InventoryMovementType
+  direction  InventoryMovementDirection
+  quantity   Int
+  reference  String?
+  note       String?
+  occurredAt DateTime                   @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([type])
+  @@index([direction])
+  @@index([occurredAt])
+}
+
+model Sale {
+  id         String      @id @default(cuid())
+  channel    SaleChannel
+  customerId String?
+  employeeId String?
+  status     SaleStatus  @default(PENDING)
+  subtotal   Decimal     @db.Decimal(12, 2)
+  discount   Decimal     @default(0) @db.Decimal(12, 2)
+  total      Decimal     @db.Decimal(12, 2)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  customer User?      @relation("CustomerSales", fields: [customerId], references: [id], onDelete: SetNull)
+  employee Employee?  @relation("EmployeeSales", fields: [employeeId], references: [id], onDelete: SetNull)
+  items    SaleItem[]
+  payments Payment[]
+
+  @@index([channel])
+  @@index([customerId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2)
+  subtotal  Decimal @db.Decimal(12, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  saleId            String
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(12, 2)
+  externalReference String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([method])
+  @@index([status])
+}
