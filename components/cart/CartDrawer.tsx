@@ -8,22 +8,28 @@ import { IconCircleButton, getButtonClassName } from "@/components/ui";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { useCartStore } from "@/lib/stores/useCartStore";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
-import { productService } from "@/lib/services/productService";
+import type { Product } from "@/lib/types";
 import { getCartSubtotal, resolveCartItems } from "@/lib/utils/cart";
 
 type CartDrawerProps = {
   isOpen: boolean;
+  products: Product[];
   onClose: () => void;
   onRequireAuth: () => void;
 };
 
-export function CartDrawer({ isOpen, onClose, onRequireAuth }: CartDrawerProps) {
+export function CartDrawer({
+  isOpen,
+  products,
+  onClose,
+  onRequireAuth,
+}: CartDrawerProps) {
   const currency = useCurrencyStore((state) => state.currency);
   const user = useAuthStore((state) => state.user);
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
-  const resolvedItems = resolveCartItems(items, productService.getAll(), currency);
+  const resolvedItems = resolveCartItems(items, products, currency);
   const subtotal = getCartSubtotal(resolvedItems);
 
   if (!isOpen) {

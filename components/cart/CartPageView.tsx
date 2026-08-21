@@ -5,19 +5,23 @@ import { ShoppingBag } from "lucide-react";
 import { CartItem } from "@/components/cart/CartItem";
 import { CartSummary } from "@/components/cart/CartSummary";
 import { getButtonClassName } from "@/components/ui";
-import { productService } from "@/lib/services/productService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { useCartStore } from "@/lib/stores/useCartStore";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
+import type { Product } from "@/lib/types";
 import { getCartSubtotal, resolveCartItems } from "@/lib/utils/cart";
 
-export function CartPageView() {
+type CartPageViewProps = {
+  products: Product[];
+};
+
+export function CartPageView({ products }: CartPageViewProps) {
   const currency = useCurrencyStore((state) => state.currency);
   const user = useAuthStore((state) => state.user);
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
-  const resolvedItems = resolveCartItems(items, productService.getAll(), currency);
+  const resolvedItems = resolveCartItems(items, products, currency);
   const subtotal = getCartSubtotal(resolvedItems);
 
   const handleCheckout = () => {

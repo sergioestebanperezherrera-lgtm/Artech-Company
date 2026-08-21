@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AuthPanel } from "@/components/auth";
 import { CartDrawer } from "@/components/cart";
 import { useCartStore } from "@/lib/stores/useCartStore";
+import type { Product } from "@/lib/types";
 
 type AuthOpenEvent = CustomEvent<{
   redirectTo?: string;
@@ -14,7 +15,11 @@ type AddToCartEvent = CustomEvent<{
   quantity?: number;
 }>;
 
-export function GlobalOverlays() {
+type GlobalOverlaysProps = {
+  products: Product[];
+};
+
+export function GlobalOverlays({ products }: GlobalOverlaysProps) {
   const addItem = useCartStore((state) => state.addItem);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -53,6 +58,7 @@ export function GlobalOverlays() {
     <>
       <CartDrawer
         isOpen={isCartOpen}
+        products={products}
         onClose={() => setIsCartOpen(false)}
         onRequireAuth={() => {
           setIsCartOpen(false);

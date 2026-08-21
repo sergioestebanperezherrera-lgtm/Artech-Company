@@ -12,7 +12,7 @@ export type Product = {
   category: string;
   brand: string;
   priceGTQ: number;
-  priceUSD: number;
+  priceUSD: number | null;
   discountPercent: number | null;
   shortSpecs: string[];
   fullSpecs: ProductSpec[];

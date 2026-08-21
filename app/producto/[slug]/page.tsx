@@ -10,8 +10,10 @@ type ProductPageProps = {
   }>;
 };
 
-export function generateStaticParams() {
-  return productService.getAll().map((product) => ({
+export async function generateStaticParams() {
+  const products = await productService.getAll();
+
+  return products.map((product) => ({
     slug: product.slug,
   }));
 }
@@ -20,7 +22,7 @@ export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = productService.getBySlug(slug);
+  const product = await productService.getBySlug(slug);
 
   if (!product) {
     return {
@@ -36,22 +38,23 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = productService.getBySlug(slug);
-  const category = product
-    ? categoryService
-        .getAll()
-        .find((candidate) => candidate.id === product.category)
-    : undefined;
+  const product = await productService.getBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
+  const [categories, relatedProducts] = await Promise.all([
+    categoryService.getAll(),
+    productService.getRelated(product),
+  ]);
+  const category = categories.find((candidate) => candidate.id === product.category);
+
   return (
     <ProductDetailView
       product={product}
       categoryName={category?.name ?? product.category}
-      relatedProducts={productService.getRelated(product)}
+      relatedProducts={relatedProducts}
     />
   );
 }

@@ -1,14 +1,20 @@
 "use client";
 
-import type { Currency } from "@/lib/types";
+import { useEffect } from "react";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
 import { cn } from "@/lib/utils/cn";
 
-const currencies: Currency[] = ["GTQ", "USD"];
+const currencies = ["GTQ"] as const;
 
 export function CurrencySelector() {
   const currency = useCurrencyStore((state) => state.currency);
   const setCurrency = useCurrencyStore((state) => state.setCurrency);
+
+  useEffect(() => {
+    if (currency !== "GTQ") {
+      setCurrency("GTQ");
+    }
+  }, [currency, setCurrency]);
 
   return (
     <div

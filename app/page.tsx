@@ -10,10 +10,12 @@ import { ScrollReveal } from "@/components/motion";
 import { categoryService } from "@/lib/services/categoryService";
 import { productService } from "@/lib/services/productService";
 
-export default function HomePage() {
-  const offers = productService.getOffers();
-  const categories = categoryService.getAll();
-  const newArrivals = productService.getNewArrivals();
+export default async function HomePage() {
+  const [offers, categories, newArrivals] = await Promise.all([
+    productService.getOffers(),
+    categoryService.getAll(),
+    productService.getNewArrivals(),
+  ]);
 
   return (
     <main className="artech-page-shell min-h-screen text-text-primary-on-dark">

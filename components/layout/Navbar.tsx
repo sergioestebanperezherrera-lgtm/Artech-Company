@@ -15,11 +15,9 @@ import { useRouter } from "next/navigation";
 import { Menu, Search, ShoppingCart, User } from "lucide-react";
 import { LogoMark } from "@/components/brand";
 import { IconCircleButton } from "@/components/ui";
-import { brandService } from "@/lib/services/brandService";
-import { categoryService } from "@/lib/services/categoryService";
-import { productService } from "@/lib/services/productService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { useCartStore } from "@/lib/stores/useCartStore";
+import type { Brand, Category, Product } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
 import { matchesSearchQuery } from "@/lib/utils/search";
 import { MobileMenu, type NavigationItem } from "./MobileMenu";
@@ -32,25 +30,14 @@ const navigationItems: NavigationItem[] = [
   { label: "Periféricos", href: "/catalogo?categoria=perifericos" },
 ];
 
-const searchScopes = [
-  ...productService.getAll().map((product) => ({
-    label: product.name,
-    href: `/producto/${product.slug}`,
-    meta: "Producto",
-  })),
-  ...categoryService.getAll().map((category) => ({
-    label: category.name,
-    href: `/catalogo?categoria=${category.id}`,
-    meta: "Categoría",
-  })),
-  ...brandService.getAll().map((brand) => ({
-    label: brand.name,
-    href: `/catalogo?buscar=${encodeURIComponent(brand.name)}`,
-    meta: "Marca",
-  })),
-];
 
-export function Navbar() {
+type NavbarProps = {
+  products: Product[];
+  categories: Category[];
+  brands: Brand[];
+};
+
+export function Navbar({ products, categories, brands }: NavbarProps) {
   const router = useRouter();
   const headerRef = useRef<HTMLElement>(null);
   const user = useAuthStore((state) => state.user);
@@ -62,15 +49,36 @@ export function Navbar() {
   const [hasScrolled, setHasScrolled] = useState(false);
   const [query, setQuery] = useState("");
 
+  const activeSearchScopes = useMemo(
+    () => [
+      ...products.map((product) => ({
+        label: product.name,
+        href: `/producto/${product.slug}`,
+        meta: "Producto",
+      })),
+      ...categories.map((category) => ({
+        label: category.name,
+        href: `/catalogo?categoria=${category.id}`,
+        meta: "Categoría",
+      })),
+      ...brands.map((brand) => ({
+        label: brand.name,
+        href: `/catalogo?buscar=${encodeURIComponent(brand.name)}`,
+        meta: "Marca",
+      })),
+    ],
+    [brands, categories, products],
+  );
+
   const searchResults = useMemo(() => {
     if (!query.trim()) {
       return [];
     }
 
-    return searchScopes
+    return activeSearchScopes
       .filter((scope) => matchesSearchQuery(`${scope.label} ${scope.meta}`, query))
       .slice(0, 6);
-  }, [query]);
+  }, [activeSearchScopes, query]);
 
   const closeSearch = useCallback(() => {
     setIsSearchOpen(false);

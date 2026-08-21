@@ -12,13 +12,18 @@ type CatalogPageProps = {
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams;
+  const [products, categories, brands] = await Promise.all([
+    productService.getAll(),
+    categoryService.getAll(),
+    brandService.getAll(),
+  ]);
 
   return (
     <CatalogView
       key={`${params?.categoria ?? ""}:${params?.buscar ?? ""}`}
-      products={productService.getAll()}
-      categories={categoryService.getAll()}
-      brands={brandService.getAll()}
+      products={products}
+      categories={categories}
+      brands={brands}
       initialCategory={params?.categoria}
       initialSearch={params?.buscar}
     />
