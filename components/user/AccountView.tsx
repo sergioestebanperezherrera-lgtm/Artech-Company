@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { MapPin, UserRound } from "lucide-react";
 import { Button, Card, getButtonClassName } from "@/components/ui";
+import { authService } from "@/lib/services/authService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { OrdersEmptyState } from "./OrdersEmptyState";
 import { UserProfileCard } from "./UserProfileCard";
@@ -11,7 +13,70 @@ import { UserProfileCard } from "./UserProfileCard";
 export function AccountView() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const signOut = useAuthStore((state) => state.signOut);
+  const [initialAuthParam] = useState(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    return new URLSearchParams(window.location.search).get("auth");
+  });
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const showGoogleError = initialAuthParam === "google_error" && !isAuthenticated;
+
+  useEffect(() => {
+    if (initialAuthParam && (initialAuthParam !== "google_error" || isAuthenticated)) {
+      router.replace("/cuenta");
+    }
+  }, [initialAuthParam, isAuthenticated, router]);
+
+  const openAuth = () => {
+    window.dispatchEvent(
+      new CustomEvent("artech:auth-open", {
+        detail: { redirectTo: "/cuenta" },
+      }),
+    );
+  };
+
+  const startGoogleLogin = () => {
+    window.location.assign(authService.getGoogleLoginUrl());
+  };
+
+  const handleSignOut = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+
+    try {
+      await signOut();
+      router.push("/");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  if (isLoading && !user) {
+    return (
+      <main className="artech-page-shell min-h-screen px-6 py-16 text-text-primary-on-dark">
+        <div className="mx-auto max-w-2xl rounded-card border border-border-on-dark bg-bg-base/75 px-6 py-12 text-center">
+          <UserRound
+            aria-hidden="true"
+            className="mx-auto text-text-secondary-on-dark"
+            size={40}
+            strokeWidth={1.5}
+          />
+          <h1 className="mt-5 text-3xl font-medium">Tu cuenta</h1>
+          <p className="mt-4 text-sm leading-6 text-text-secondary-on-dark">
+            Verificando tu sesión...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   if (!user) {
     return (
@@ -25,21 +90,24 @@ export function AccountView() {
           />
           <h1 className="mt-5 text-3xl font-medium">Tu cuenta</h1>
           <p className="mt-4 text-sm leading-6 text-text-secondary-on-dark">
-            Inicia sesión o crea una cuenta mock para ver tu panel.
+            Inicia sesión o crea una cuenta para ver tu panel.
           </p>
-          <Button
-            variant="primary-on-dark"
-            className="mt-7"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent("artech:auth-open", {
-                  detail: { redirectTo: "/cuenta" },
-                }),
-              )
-            }
-          >
-            Acceder
-          </Button>
+          {showGoogleError ? (
+            <p
+              className="mx-auto mt-5 max-w-md text-sm leading-6 text-text-secondary-on-dark"
+              role="alert"
+            >
+              No se pudo iniciar sesión con Google.
+            </p>
+          ) : null}
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button variant="primary-on-dark" onClick={openAuth}>
+              Acceder
+            </Button>
+            <Button variant="outline-on-dark" onClick={startGoogleLogin}>
+              Continuar con Google
+            </Button>
+          </div>
         </div>
       </main>
     );
@@ -75,23 +143,22 @@ export function AccountView() {
             />
             <h2 className="mt-4 text-xl font-medium">Direcciones guardadas</h2>
             <p className="mt-3 text-sm leading-6 text-text-secondary-on-light">
-              Placeholder para direcciones cuando exista backend.
+              La gestión de direcciones se conectará en una fase posterior.
             </p>
           </Card>
           <Card className="flex flex-col justify-between gap-5 p-6">
             <div>
               <h2 className="text-xl font-medium">Sesión</h2>
               <p className="mt-3 text-sm leading-6 text-text-secondary-on-light">
-                La sesión actual vive solo en memoria del navegador.
+                Tu sesión está protegida por una cookie HttpOnly gestionada por el backend.
               </p>
             </div>
             <Button
               variant="primary-on-light"
               className="w-max"
-              onClick={() => {
-                signOut();
-                router.push("/");
-              }}
+              isLoading={isSigningOut}
+              loadingLabel="Cerrando sesión..."
+              onClick={handleSignOut}
             >
               Cerrar sesión
             </Button>

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { asyncHandler } from "../../middlewares/async-handler";
 import {
+  googleCallbackController,
+  googleLoginController,
   loginController,
   logoutController,
   meController,
@@ -12,6 +14,8 @@ const router = Router();
 
 router.post("/register", authRateLimiter, asyncHandler(registerController));
 router.post("/login", authRateLimiter, asyncHandler(loginController));
+router.get("/google", asyncHandler(googleLoginController));
+router.get("/google/callback", asyncHandler(googleCallbackController));
 router.get("/me", asyncHandler(meController));
 router.post("/logout", asyncHandler(logoutController));
 

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import { argon2Verify, argon2id } from "hash-wasm";
 
 const passwordHashOptions = {
@@ -12,8 +12,27 @@ export function generateSessionToken() {
   return randomBytes(32).toString("base64url");
 }
 
+export function generateOAuthState() {
+  return randomBytes(32).toString("base64url");
+}
+
 export function hashSessionToken(token: string) {
   return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+export function hashOAuthState(state: string) {
+  return createHash("sha256").update(state, "utf8").digest("hex");
+}
+
+export function safeCompare(value: string, expected: string) {
+  const valueBuffer = Buffer.from(value, "utf8");
+  const expectedBuffer = Buffer.from(expected, "utf8");
+
+  if (valueBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(valueBuffer, expectedBuffer);
 }
 
 export function hashPassword(password: string) {

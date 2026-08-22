@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { authUserInclude } from "./auth.types";
+import { AuthProvider } from "@prisma/client";
 
 export async function findUserByEmail(email: string) {
   return prisma.user.findUnique({
@@ -20,6 +21,68 @@ export async function createLocalUser(input: {
       name: input.name,
       email: input.email,
       passwordHash: input.passwordHash,
+    },
+    include: authUserInclude,
+  });
+}
+
+export async function createGoogleUser(input: {
+  name: string;
+  email: string;
+  googleSub: string;
+}) {
+  return prisma.user.create({
+    data: {
+      name: input.name,
+      email: input.email,
+      passwordHash: null,
+      emailVerified: true,
+      isActive: true,
+      authAccounts: {
+        create: {
+          provider: AuthProvider.GOOGLE,
+          providerAccountId: input.googleSub,
+        },
+      },
+    },
+    include: authUserInclude,
+  });
+}
+
+export async function findGoogleAuthAccount(providerAccountId: string) {
+  return prisma.authAccount.findUnique({
+    where: {
+      provider_providerAccountId: {
+        provider: AuthProvider.GOOGLE,
+        providerAccountId,
+      },
+    },
+    include: {
+      user: {
+        include: authUserInclude,
+      },
+    },
+  });
+}
+
+export async function linkGoogleAuthAccount(input: {
+  userId: string;
+  googleSub: string;
+}) {
+  await prisma.authAccount.create({
+    data: {
+      userId: input.userId,
+      provider: AuthProvider.GOOGLE,
+      providerAccountId: input.googleSub,
+    },
+  });
+
+  return prisma.user.update({
+    where: {
+      id: input.userId,
+    },
+    data: {
+      emailVerified: true,
     },
     include: authUserInclude,
   });

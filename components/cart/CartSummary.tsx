@@ -32,7 +32,7 @@ export function CartSummary({
     setIsProcessing(true);
 
     if (isAuthenticated) {
-      setMessage("Compra mock preparada. El pago real se conectará con el backend.");
+      setMessage("Compra preparada. El pago real se conectará con el backend.");
       setIsProcessing(false);
       return;
     }
@@ -51,7 +51,7 @@ export function CartSummary({
       </div>
       <p className="mt-2 text-xs leading-5 text-text-secondary-on-light">
         {isAuthenticated
-          ? "Compra mock lista para revisión. El cobro real queda pendiente de backend."
+          ? "Compra lista para revisión. El cobro real queda pendiente de backend."
           : "Inicia sesión para continuar con la compra."}
       </p>
       <Button

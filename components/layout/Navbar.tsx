@@ -41,6 +41,7 @@ export function Navbar({ products, categories, brands }: NavbarProps) {
   const router = useRouter();
   const headerRef = useRef<HTMLElement>(null);
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const cartCount = useCartStore((state) =>
     state.items.reduce((count, item) => count + item.quantity, 0),
   );
@@ -328,12 +329,23 @@ export function Navbar({ products, categories, brands }: NavbarProps) {
               className="artech-liquid-glass-control"
               onClick={() => setIsSearchOpen((current) => !current)}
             />
-            <IconCircleButton
-              aria-label="Cuenta"
-              icon={<User strokeWidth={1.5} />}
-              className="artech-liquid-glass-control"
-              onClick={handleAccountClick}
-            />
+            <div className="relative">
+              <IconCircleButton
+                aria-label={isAuthenticated ? "Mi cuenta" : "Cuenta"}
+                title={isAuthenticated ? "Mi cuenta" : "Cuenta"}
+                icon={<User strokeWidth={1.5} />}
+                className="artech-liquid-glass-control"
+                onClick={handleAccountClick}
+              />
+              {user ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-btn-primary-on-dark-bg text-[10px] font-medium text-btn-primary-on-dark-text"
+                >
+                  {user.name.slice(0, 1).toUpperCase()}
+                </span>
+              ) : null}
+            </div>
             <div className="relative">
               <IconCircleButton
                 aria-label="Carrito"

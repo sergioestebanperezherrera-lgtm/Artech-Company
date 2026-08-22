@@ -42,10 +42,16 @@ export const env = {
   port: parsePort(process.env.PORT),
   databaseUrl: process.env.DATABASE_URL,
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
+  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
   authCookieName: process.env.AUTH_COOKIE_NAME ?? "artech_session",
   authSessionTtlDays: parsePositiveInteger(
     process.env.AUTH_SESSION_TTL_DAYS,
     14,
     "AUTH_SESSION_TTL_DAYS",
   ),
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  googleRedirectUri:
+    process.env.GOOGLE_REDIRECT_URI ??
+    "http://localhost:4000/api/auth/google/callback",
 };

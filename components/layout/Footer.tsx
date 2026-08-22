@@ -40,7 +40,7 @@ export function Footer() {
 
   const handleNewsletterSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage("Registro mock recibido.");
+    setMessage("Registro recibido.");
     setEmail("");
   };
 

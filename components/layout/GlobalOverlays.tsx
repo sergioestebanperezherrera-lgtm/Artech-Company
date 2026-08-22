@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AuthPanel } from "@/components/auth";
 import { CartDrawer } from "@/components/cart";
+import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { useCartStore } from "@/lib/stores/useCartStore";
 import type { Product } from "@/lib/types";
 
@@ -20,10 +21,15 @@ type GlobalOverlaysProps = {
 };
 
 export function GlobalOverlays({ products }: GlobalOverlaysProps) {
+  const initializeAuth = useAuthStore((state) => state.initialize);
   const addItem = useCartStore((state) => state.addItem);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authRedirectTo, setAuthRedirectTo] = useState<string | undefined>("/cuenta");
+
+  useEffect(() => {
+    void initializeAuth();
+  }, [initializeAuth]);
 
   useEffect(() => {
     const openCart = () => setIsCartOpen(true);

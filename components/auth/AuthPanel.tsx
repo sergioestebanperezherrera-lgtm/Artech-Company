@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
 import { LogoMark } from "@/components/brand";
 import { Button, Card, IconCircleButton } from "@/components/ui";
+import { authService, AuthServiceError } from "@/lib/services/authService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { cn } from "@/lib/utils/cn";
 
@@ -44,31 +45,41 @@ type PasswordFieldProps = {
   onToggleVisibility: () => void;
 };
 
+function getFriendlyAuthError(error: unknown, fallback: string) {
+  if (error instanceof AuthServiceError) {
+    if (error.status === 401) {
+      return "Correo o contraseña incorrectos.";
+    }
+
+    if (error.status === 409) {
+      return "Ya existe una cuenta con ese correo.";
+    }
+
+    if (error.status === 400) {
+      return "Revisa los datos ingresados e intenta nuevamente.";
+    }
+  }
+
+  return fallback;
+}
+
 function SocialButtons() {
+  const handleGoogleLogin = () => {
+    window.location.assign(authService.getGoogleLoginUrl());
+  };
+
   return (
-    <div className="flex justify-center gap-2" aria-label="Accesos sociales decorativos">
-      <IconCircleButton
-        aria-label="Facebook decorativo"
-        icon={<span className="text-xs font-medium text-social-facebook">f</span>}
-        size="social"
-        surface="light"
-        disabled
-      />
-      <IconCircleButton
-        aria-label="X decorativo"
-        icon={<span className="text-xs font-medium text-text-primary-on-light">X</span>}
-        size="social"
-        surface="light"
-        disabled
-      />
-      <IconCircleButton
-        aria-label="Google decorativo"
-        icon={<span className="text-xs font-medium text-social-google">G</span>}
-        size="social"
-        surface="light"
-        disabled
-      />
-    </div>
+    <Button
+      type="button"
+      variant="outline-on-light"
+      className="w-full gap-2"
+      onClick={handleGoogleLogin}
+    >
+      <span className="text-xs font-medium text-social-google" aria-hidden="true">
+        G
+      </span>
+      Continuar con Google
+    </Button>
   );
 }
 
@@ -91,10 +102,10 @@ function PasswordField({
         id={id}
         type={isVisible ? "text" : "password"}
         required
-        minLength={6}
+        minLength={8}
         autoComplete={autoComplete}
         value={value}
-        placeholder="Mínimo 6 caracteres"
+        placeholder="Mínimo 8 caracteres"
         aria-invalid={hasError}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded-input border border-border-on-light px-3 pr-12 text-base text-text-primary-on-light"
@@ -150,7 +161,7 @@ function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordId = `${idPrefix}-password`;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isSubmitting) {
@@ -165,9 +176,9 @@ function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setStatusMessage("");
-      setError("La contraseña mock debe tener al menos 6 caracteres.");
+      setError("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -176,10 +187,15 @@ function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
     setIsSubmitting(true);
 
     try {
-      signIn(normalizedEmail);
+      await signIn(normalizedEmail, password);
       onSuccess();
-    } catch {
-      setError("No pudimos iniciar sesión. Intenta nuevamente.");
+    } catch (submissionError) {
+      setError(
+        getFriendlyAuthError(
+          submissionError,
+          "No pudimos iniciar sesión. Intenta nuevamente.",
+        ),
+      );
       setStatusMessage("");
       setIsSubmitting(false);
     }
@@ -201,9 +217,6 @@ function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
       <SocialButtons />
       <p className="text-center text-sm text-text-secondary-on-light">
         O con tu correo
-      </p>
-      <p className="rounded-input bg-surface-card-inset/5 px-3 py-2 text-center text-xs leading-5 text-text-secondary-on-light">
-        Demo: usa cualquier correo válido y una contraseña de 6+ caracteres.
       </p>
       <label className="grid gap-2 text-sm text-text-secondary-on-light">
         Email
@@ -229,7 +242,7 @@ function SignInForm({ idPrefix, onSuccess }: SignInFormProps) {
           value={password}
           autoComplete="current-password"
           isVisible={isPasswordVisible}
-          hasError={Boolean(error) && password.length < 6}
+          hasError={Boolean(error) && password.length < 8}
           onToggleVisibility={() => setIsPasswordVisible((current) => !current)}
           onChange={(nextPassword) => {
             setPassword(nextPassword);
@@ -272,7 +285,7 @@ function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordId = `${idPrefix}-password`;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isSubmitting) {
@@ -284,7 +297,7 @@ function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
 
     if (normalizedName.length < 2) {
       setStatusMessage("");
-      setError("Ingresa tu nombre para crear la cuenta mock.");
+      setError("Ingresa tu nombre para crear la cuenta.");
       return;
     }
 
@@ -294,9 +307,9 @@ function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setStatusMessage("");
-      setError("La contraseña mock debe tener al menos 6 caracteres.");
+      setError("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -305,10 +318,15 @@ function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
     setIsSubmitting(true);
 
     try {
-      signUp(normalizedName, normalizedEmail);
+      await signUp(normalizedName, normalizedEmail, password);
       onSuccess();
-    } catch {
-      setError("No pudimos crear la cuenta. Intenta nuevamente.");
+    } catch (submissionError) {
+      setError(
+        getFriendlyAuthError(
+          submissionError,
+          "No pudimos crear la cuenta. Intenta nuevamente.",
+        ),
+      );
       setStatusMessage("");
       setIsSubmitting(false);
     }
@@ -372,7 +390,7 @@ function SignUpForm({ idPrefix, onSuccess }: SignUpFormProps) {
           value={password}
           autoComplete="new-password"
           isVisible={isPasswordVisible}
-          hasError={Boolean(error) && password.length < 6}
+          hasError={Boolean(error) && password.length < 8}
           onToggleVisibility={() => setIsPasswordVisible((current) => !current)}
           onChange={(nextPassword) => {
             setPassword(nextPassword);
@@ -518,8 +536,8 @@ export function AuthPanel({ isOpen, onClose, redirectTo = "/cuenta" }: AuthPanel
             </h2>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-text-secondary-on-dark">
               {mode === "sign-in"
-                ? "Accede con una sesión mock para continuar."
-                : "Registra una cuenta visual para probar el flujo."}
+                ? "Accede con tu cuenta para continuar."
+                : "Registra una cuenta para continuar tu experiencia."}
             </p>
             <Button
               variant="primary-on-dark"
@@ -572,7 +590,7 @@ export function AuthPanel({ isOpen, onClose, redirectTo = "/cuenta" }: AuthPanel
             </h2>
             <p className="mt-3 max-w-xs text-sm leading-6 text-text-secondary-on-dark">
               {mode === "sign-in"
-                ? "Crea una cuenta mock para continuar tu experiencia."
+                ? "Crea una cuenta para continuar tu experiencia."
                 : "Vuelve al acceso de clientes existentes."}
             </p>
             <Button

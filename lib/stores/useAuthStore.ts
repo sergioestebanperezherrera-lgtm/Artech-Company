@@ -1,51 +1,159 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import type { User } from "@/lib/types";
+import {
+  authService,
+  type AuthSession,
+  type AuthUser,
+} from "@/lib/services/authService";
 
 type AuthState = {
-  user: User | null;
-  signIn: (email: string) => User;
-  signUp: (name: string, email: string) => User;
-  signOut: () => void;
+  user: AuthUser | null;
+  roles: string[];
+  permissions: string[];
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  hasCheckedSession: boolean;
+  error: string | null;
+  initialize: () => Promise<void>;
+  refreshSession: () => Promise<AuthSession | null>;
+  signIn: (email: string, password: string) => Promise<AuthSession>;
+  signUp: (name: string, email: string, password: string) => Promise<AuthSession>;
+  signOut: () => Promise<void>;
 };
 
-function getNameFromEmail(email: string) {
-  const [name] = email.split("@");
-  return name ? name.replace(/[._-]/g, " ") : "Cliente Artech";
+let sessionRequest: Promise<AuthSession | null> | null = null;
+
+function removeLegacyMockSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem("artech-auth");
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      signIn: (email) => {
-        const user = {
-          id: "mock-user",
-          name: getNameFromEmail(email),
-          email,
-        };
+function applySession(session: AuthSession | null) {
+  return {
+    user: session?.user ?? null,
+    roles: session?.roles ?? [],
+    permissions: session?.permissions ?? [],
+    isAuthenticated: Boolean(session?.user),
+  };
+}
 
-        set({ user });
-        return user;
-      },
-      signUp: (name, email) => {
-        const user = {
-          id: "mock-user",
-          name: name.trim() || "Cliente Artech",
-          email,
-        };
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  roles: [],
+  permissions: [],
+  isLoading: true,
+  isAuthenticated: false,
+  hasCheckedSession: false,
+  error: null,
 
-        set({ user });
-        return user;
-      },
-      signOut: () => set({ user: null }),
-    }),
-    {
-      name: "artech-auth",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ user: state.user }),
-    },
-  ),
-);
+  initialize: async () => {
+    if (get().hasCheckedSession) {
+      return;
+    }
+
+    await get().refreshSession();
+  },
+
+  refreshSession: async () => {
+    removeLegacyMockSession();
+    set({ isLoading: true, error: null });
+
+    try {
+      sessionRequest ??= authService.getMe();
+      const session = await sessionRequest;
+
+      set({
+        ...applySession(session),
+        isLoading: false,
+        hasCheckedSession: true,
+        error: null,
+      });
+
+      return session;
+    } catch {
+      set({
+        user: null,
+        roles: [],
+        permissions: [],
+        isAuthenticated: false,
+        isLoading: false,
+        hasCheckedSession: true,
+        error: "No pudimos verificar tu sesión. Intenta nuevamente.",
+      });
+
+      return null;
+    } finally {
+      sessionRequest = null;
+    }
+  },
+
+  signIn: async (email, password) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const session = await authService.login(email, password);
+
+      set({
+        ...applySession(session),
+        isLoading: false,
+        hasCheckedSession: true,
+        error: null,
+      });
+
+      return session;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: "No pudimos iniciar sesión. Intenta nuevamente.",
+      });
+
+      throw error;
+    }
+  },
+
+  signUp: async (name, email, password) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const session = await authService.register(name, email, password);
+
+      set({
+        ...applySession(session),
+        isLoading: false,
+        hasCheckedSession: true,
+        error: null,
+      });
+
+      return session;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: "No pudimos crear tu cuenta. Intenta nuevamente.",
+      });
+
+      throw error;
+    }
+  },
+
+  signOut: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await authService.logout();
+    } finally {
+      set({
+        user: null,
+        roles: [],
+        permissions: [],
+        isAuthenticated: false,
+        isLoading: false,
+        hasCheckedSession: true,
+        error: null,
+      });
+    }
+  },
+}));

@@ -1,23 +1,39 @@
 import { AppError } from "../../errors/app-error";
-import { clearSessionCookie, getSessionTokenFromRequest, setSessionCookie } from "./auth.cookies";
+import { env } from "../../config/env";
+import { OAuth2Client } from "google-auth-library";
 import {
+  clearGoogleOAuthStateCookie,
+  clearSessionCookie,
+  getGoogleOAuthStateHashFromRequest,
+  getSessionTokenFromRequest,
+  setGoogleOAuthStateCookie,
+  setSessionCookie,
+} from "./auth.cookies";
+import {
+  generateOAuthState,
   generateSessionToken,
+  hashOAuthState,
   hashPassword,
   hashSessionToken,
+  safeCompare,
   verifyPassword,
 } from "./auth.crypto";
 import { mapAuthUser } from "./auth.mapper";
 import {
+  createGoogleUser,
   createLocalUser,
   createSession,
   deleteSessionByTokenHash,
+  findGoogleAuthAccount,
   findUserByEmail,
+  linkGoogleAuthAccount,
 } from "./auth.repository";
 import { cleanupExpiredSessions, getSessionExpiresAt, resolveAuthSession } from "./auth.session";
 import type { LoginInput, RegisterInput } from "./auth.validation";
 import type { Request, Response } from "express";
 
 const invalidCredentialsMessage = "Invalid email or password.";
+const googleOAuthScopes = ["openid", "email", "profile"];
 
 async function issueSession(response: Response, userId: string) {
   const token = generateSessionToken();
@@ -31,6 +47,38 @@ async function issueSession(response: Response, userId: string) {
   });
 
   setSessionCookie(response, token, expiresAt);
+}
+
+function buildFrontendRedirect(path: string, params?: Record<string, string>) {
+  const redirectUrl = new URL(path, env.frontendUrl);
+
+  for (const [key, value] of Object.entries(params ?? {})) {
+    redirectUrl.searchParams.set(key, value);
+  }
+
+  return redirectUrl.toString();
+}
+
+function getGoogleClient() {
+  if (!env.googleClientId || !env.googleClientSecret || !env.googleRedirectUri) {
+    throw new AppError("Google OAuth is not configured.", 503);
+  }
+
+  return new OAuth2Client(
+    env.googleClientId,
+    env.googleClientSecret,
+    env.googleRedirectUri,
+  );
+}
+
+function getGoogleErrorRedirect() {
+  return buildFrontendRedirect("/cuenta", {
+    auth: "google_error",
+  });
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
 export async function register(input: RegisterInput, response: Response) {
@@ -52,6 +100,115 @@ export async function register(input: RegisterInput, response: Response) {
   await issueSession(response, user.id);
 
   return mapAuthUser(user);
+}
+
+export function startGoogleLogin(response: Response) {
+  const googleClient = getGoogleClient();
+  const state = generateOAuthState();
+
+  setGoogleOAuthStateCookie(response, hashOAuthState(state));
+
+  return googleClient.generateAuthUrl({
+    redirect_uri: env.googleRedirectUri,
+    response_type: "code",
+    scope: googleOAuthScopes,
+    state,
+  });
+}
+
+export async function handleGoogleCallback(request: Request, response: Response) {
+  const { code, error, state } = request.query;
+  const stateHashFromCookie = getGoogleOAuthStateHashFromRequest(request);
+
+  clearGoogleOAuthStateCookie(response);
+
+  if (typeof error === "string") {
+    return getGoogleErrorRedirect();
+  }
+
+  if (
+    typeof code !== "string" ||
+    typeof state !== "string" ||
+    !stateHashFromCookie ||
+    !safeCompare(hashOAuthState(state), stateHashFromCookie)
+  ) {
+    return getGoogleErrorRedirect();
+  }
+
+  try {
+    const googleClient = getGoogleClient();
+    const tokenResponse = await googleClient.getToken(code);
+    const idToken = tokenResponse.tokens.id_token;
+
+    if (!idToken) {
+      return getGoogleErrorRedirect();
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: env.googleClientId,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return getGoogleErrorRedirect();
+    }
+
+    const issuer = payload.iss;
+    const audience = payload.aud;
+
+    if (
+      (issuer !== "https://accounts.google.com" && issuer !== "accounts.google.com") ||
+      audience !== env.googleClientId ||
+      !payload.sub ||
+      !payload.email ||
+      payload.email_verified !== true
+    ) {
+      return getGoogleErrorRedirect();
+    }
+
+    const googleSub = payload.sub;
+    const email = normalizeEmail(payload.email);
+    const name = payload.name?.trim() || email.split("@")[0] || "Artech User";
+    const existingAuthAccount = await findGoogleAuthAccount(googleSub);
+
+    if (existingAuthAccount) {
+      if (!existingAuthAccount.user.isActive) {
+        return getGoogleErrorRedirect();
+      }
+
+      await issueSession(response, existingAuthAccount.user.id);
+      return buildFrontendRedirect("/cuenta");
+    }
+
+    const existingUser = await findUserByEmail(email);
+
+    if (existingUser) {
+      if (!existingUser.isActive) {
+        return getGoogleErrorRedirect();
+      }
+
+      const linkedUser = await linkGoogleAuthAccount({
+        userId: existingUser.id,
+        googleSub,
+      });
+
+      await issueSession(response, linkedUser.id);
+      return buildFrontendRedirect("/cuenta");
+    }
+
+    const user = await createGoogleUser({
+      name,
+      email,
+      googleSub,
+    });
+
+    await issueSession(response, user.id);
+
+    return buildFrontendRedirect("/cuenta");
+  } catch {
+    return getGoogleErrorRedirect();
+  }
 }
 
 export async function login(input: LoginInput, response: Response) {
