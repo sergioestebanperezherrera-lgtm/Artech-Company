@@ -23,9 +23,29 @@ function parseCorsOrigins(value: string | undefined) {
     .filter(Boolean);
 }
 
+function parsePositiveInteger(
+  value: string | undefined,
+  fallback: number,
+  name: string,
+) {
+  const parsed = Number(value ?? fallback);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: parsePort(process.env.PORT),
   databaseUrl: process.env.DATABASE_URL,
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
+  authCookieName: process.env.AUTH_COOKIE_NAME ?? "artech_session",
+  authSessionTtlDays: parsePositiveInteger(
+    process.env.AUTH_SESSION_TTL_DAYS,
+    14,
+    "AUTH_SESSION_TTL_DAYS",
+  ),
 };

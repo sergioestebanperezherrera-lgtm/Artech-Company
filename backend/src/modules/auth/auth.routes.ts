@@ -1,0 +1,18 @@
+import { Router } from "express";
+import { asyncHandler } from "../../middlewares/async-handler";
+import {
+  loginController,
+  logoutController,
+  meController,
+  registerController,
+} from "./auth.controller";
+import { authRateLimiter } from "./auth.rate-limit";
+
+const router = Router();
+
+router.post("/register", authRateLimiter, asyncHandler(registerController));
+router.post("/login", authRateLimiter, asyncHandler(loginController));
+router.get("/me", asyncHandler(meController));
+router.post("/logout", asyncHandler(logoutController));
+
+export default router;
