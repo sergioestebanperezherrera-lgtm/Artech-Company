@@ -1,7 +1,21 @@
-import type { Request, Response } from "express";
+import type { CookieOptions, Request, Response } from "express";
 import { env } from "../../config/env";
 
 const googleOAuthStateCookieName = "artech_google_oauth_state";
+
+function getCrossSiteCookieOptions(): Pick<CookieOptions, "sameSite" | "secure"> {
+  if (env.nodeEnv === "production") {
+    return {
+      sameSite: "none",
+      secure: true,
+    };
+  }
+
+  return {
+    sameSite: "lax",
+    secure: false,
+  };
+}
 
 function getCookieValue(header: string | undefined, name: string) {
   if (!header) {
@@ -28,8 +42,7 @@ export function getSessionTokenFromRequest(request: Request) {
 export function setSessionCookie(response: Response, token: string, expiresAt: Date) {
   response.cookie(env.authCookieName, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
+    ...getCrossSiteCookieOptions(),
     path: "/",
     expires: expiresAt,
   });
@@ -38,8 +51,7 @@ export function setSessionCookie(response: Response, token: string, expiresAt: D
 export function clearSessionCookie(response: Response) {
   response.clearCookie(env.authCookieName, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
+    ...getCrossSiteCookieOptions(),
     path: "/",
   });
 }
@@ -54,8 +66,7 @@ export function setGoogleOAuthStateCookie(
 ) {
   response.cookie(googleOAuthStateCookieName, stateHash, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
+    ...getCrossSiteCookieOptions(),
     path: "/api/auth/google/callback",
     maxAge: 10 * 60 * 1000,
   });
@@ -64,8 +75,7 @@ export function setGoogleOAuthStateCookie(
 export function clearGoogleOAuthStateCookie(response: Response) {
   response.clearCookie(googleOAuthStateCookieName, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
+    ...getCrossSiteCookieOptions(),
     path: "/api/auth/google/callback",
   });
 }
