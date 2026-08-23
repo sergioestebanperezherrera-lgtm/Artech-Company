@@ -1,46 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { brands } from "./seed-data/brands";
+import { categories } from "./seed-data/categories";
+import { products, type ProductSeed } from "./seed-data/products";
 
 const prisma = new PrismaClient();
-
-type CategorySeed = {
-  id: string;
-  name: string;
-  icon: string;
-};
-
-type BrandSeed = {
-  id: string;
-  name: string;
-  logo: string;
-};
-
-type ProductSpecSeed = {
-  label: string;
-  value: string;
-};
-
-type ProductSeed = {
-  id: string;
-  slug: string;
-  name: string;
-  category: string;
-  brand: string;
-  priceGTQ: number;
-  discountPercent: number | null;
-  shortSpecs: string[];
-  fullSpecs: ProductSpecSeed[];
-  images: string[];
-  stock: number;
-  hasRgbLighting: boolean;
-};
-
-const { categories } = require("../../lib/data/categories") as {
-  categories: CategorySeed[];
-};
-const { brands } = require("../../lib/data/brands") as { brands: BrandSeed[] };
-const { products } = require("../../lib/data/products") as {
-  products: ProductSeed[];
-};
 
 function normalizeText(value: string) {
   return value
