@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "node tests/e2e.mjs"
+    "test:e2e": "node tests/e2e.mjs",
+    "test:admin-e2e": "node tests/admin.e2e.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

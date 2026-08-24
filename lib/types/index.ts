@@ -1,4 +1,11 @@
 export type { Brand } from "./brand";
+export type {
+  AdminContext,
+  AdminEmployee,
+  AdminPermissionKey,
+  AdminRoleKey,
+  AdminUser,
+} from "./admin";
 export type { CartItem } from "./cart";
 export type { Category } from "./category";
 export type { Order } from "./order";

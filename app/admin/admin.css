@@ -1,0 +1,82 @@
+.admin-surface,
+.admin-access-screen {
+  background:
+    radial-gradient(circle at 86% 4%, rgb(255 255 255 / 4%), transparent 28rem),
+    linear-gradient(180deg, #080808, #050505 42%, #030303);
+}
+
+.admin-access-screen {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding-block: 3rem;
+}
+
+.admin-state-panel,
+.admin-module-card,
+.admin-empty-panel,
+.admin-module-list {
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 4%), transparent 42%),
+    rgb(10 10 10 / 88%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.admin-module-card {
+  transition:
+    border-color 220ms var(--ease-out),
+    background-color 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
+}
+
+.admin-module-card:hover {
+  border-color: rgb(255 255 255 / 20%);
+  background-color: rgb(255 255 255 / 3%);
+  transform: translateY(-1px);
+}
+
+.admin-topbar {
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+  background: rgb(5 5 5 / 88%);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.admin-mobile-drawer {
+  inset: 0 auto 0 0;
+  margin: 0;
+  border: 0;
+  background: #080808;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 240ms var(--ease-drawer),
+    transform 240ms var(--ease-drawer);
+}
+
+.admin-mobile-drawer::backdrop {
+  background: rgb(0 0 0 / 72%);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+@starting-style {
+  .admin-mobile-drawer[open] {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-mobile-drawer,
+  .admin-module-card {
+    transition: none;
+  }
+
+  .admin-module-card:hover {
+    transform: none;
+  }
+}
