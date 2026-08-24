@@ -2,21 +2,22 @@
 
 ## 1. Que es Artech
 
-ARTECH es un e-commerce de electronica y tecnologia. El nombre combina una identidad visual sobria con una experiencia de compra moderna, clara y accesible.
+ARTECH es un e-commerce de electronica y tecnologia con una tienda publica funcional, API propia y catalogo persistido en PostgreSQL.
 
 - **Logo:** isotipo estilizado usado en navbar/favicon + wordmark "Artech".
-- **Personalidad de marca:** premium, minimalista, tecnologica y monocromatica. El sitio debe sentirse moderno sin volverse intimidante ni perder claridad de compra.
+- **Personalidad de marca:** premium, minimalista, tecnologica y monocromatica.
+- **Experiencia:** compra clara y responsive sin sacrificar la identidad visual.
 
 ## 2. Que vende
 
 Electronica y tecnologia en general, con foco principal en:
 
-- Celulares
-- Tarjetas graficas (GPU)
-- Memoria RAM
-- Procesadores (CPU)
-- Monitores
-- Perifericos
+- Celulares.
+- Tarjetas graficas (GPU).
+- Memoria RAM y procesadores.
+- Monitores.
+- Perifericos.
+- Componentes, consolas y accesorios.
 
 No es una tienda gamer de nicho. Es una tienda de tecnologia general con catalogo fuerte en componentes de PC.
 
@@ -24,19 +25,21 @@ No es una tienda gamer de nicho. Es una tienda de tecnologia general con catalog
 
 Consumidores generales interesados en tecnologia. La experiencia debe funcionar tanto para alguien que busca un celular como para alguien que compara una tarjeta grafica o un monitor.
 
-## 4. Alcance de esta etapa
+## 4. Alcance actual
 
-El frontend esta implementado con datos mock y estado local persistente donde corresponde. La integracion con backend real queda para una fase futura.
-
-| Incluido actualmente | Pendiente para fases futuras |
+| Area | Estado |
 |---|---|
-| Home, catalogo, paginas de producto, carrito y cuenta | Backend real y base de datos |
-| Interacciones de UI: filtros, busqueda, carrito, login/registro mock | Autenticacion real |
-| Datos de producto simulados | Pasarela de pago real |
-| Stores locales para carrito, moneda y sesion mock | Inventario, pedidos y ventas reales |
-| Responsive y QA funcional E2E | Panel administrativo, empleados, POS/caja |
-
-El login/registro, el carrito y el panel de usuario funcionan en el frontend mediante mocks. No hay validacion de credenciales real, tokens, OAuth ni pagos.
+| Home, catalogo, busqueda, filtros y paginas de producto | Implementado |
+| Catalogo desde Express/PostgreSQL | Implementado |
+| Registro y login email/password | Implementado |
+| Google OAuth | Implementado |
+| Sesiones persistentes con cookie HttpOnly | Implementado |
+| Carrito | Implementado localmente en el navegador |
+| Cuenta | Identidad y sesion reales; edicion de perfil, direcciones y pedidos pendientes |
+| Inventario | Modelo y lectura de stock disponibles; gestion operativa pendiente |
+| Roles y permisos | Modelos y datos incluidos en auth; administracion pendiente |
+| Ventas y pagos | Modelos Prisma existentes; sin endpoints ni checkout |
+| Empleados, admin, POS, caja y nomina | Planeado |
 
 ## 5. Mapa del sitio
 
@@ -45,16 +48,47 @@ El login/registro, el carrito y el panel de usuario funcionan en el frontend med
 | `/` | Home |
 | `/catalogo` | Catalogo con filtros y paginacion |
 | `/producto/[slug]` | Pagina de producto individual |
-| `/carrito` | Pagina de carrito |
-| `/cuenta` | Panel de usuario con sesion mock |
-| Login / Registro | Modal global accesible desde cuenta o desde el gate de compra |
+| `/carrito` | Pagina local del carrito |
+| `/cuenta` | Cuenta del usuario autenticado o acceso a login/registro |
+| Login / Registro | Modal global conectado a la API |
 
-Convencion de rutas de producto: slug legible, por ejemplo `/producto/rtx-5080`, no ID numerico.
+La ruta de producto usa un slug legible, por ejemplo `/producto/rtx-5080`.
 
-## 6. Reglas de negocio
+## 6. Reglas de negocio actuales
 
-- **Moneda:** el sitio soporta Quetzales (GTQ) y Dolares (USD). Todo componente que muestre precio debe leer la moneda seleccionada desde el store global.
-- **Idioma:** espanol en esta etapa. No existe selector de idioma ni estructura i18n completa.
-- **Datos mock:** los productos, marcas y categorias viven en `lib/data/` y se consumen mediante `lib/services/`.
-- **Assets:** las imagenes actuales viven en `public/assets/` o `public/videos/`. Los datos mock deben apuntar a assets propios del proyecto o placeholders claros, nunca depender de URLs externas no controladas.
-- **Backend futuro:** cualquier integracion real debe mantener la forma de datos documentada en `API_CONTRACT.md` o actualizar ese contrato antes de cambiar servicios y componentes.
+- **Fuente de catalogo:** PostgreSQL a traves de la API Express.
+- **Fallback de desarrollo:** `lib/data/` se usa solo si falla la API de catalogo fuera de produccion.
+- **Moneda:** GTQ es la unica moneda funcional. `priceUSD` permanece `null` y no existe tipo de cambio hardcodeado.
+- **Precio:** la API expone `priceGTQ` y calcula `discountPercent` desde `price` y `previousPrice`.
+- **Stock:** se deriva de `Inventory.physicalQuantity - Inventory.reservedQuantity`.
+- **Promociones:** un producto agotado permanece en catalogo y detalle, pero no se selecciona automaticamente para espacios de compra inmediata.
+- **Autenticacion:** email/password y Google OAuth crean sesiones persistentes; el token no se almacena en `localStorage`.
+- **Carrito:** se persiste en `localStorage` y no esta sincronizado con la cuenta o la base de datos.
+- **Checkout:** no existe cobro ni creacion de pedido real.
+- **Idioma:** espanol; no existe sistema i18n completo.
+- **Assets:** imagenes y video se sirven desde `public/`; la API almacena rutas, no archivos binarios.
+
+## 7. Produccion
+
+- Frontend desplegado en Vercel.
+- Backend desplegado en Railway.
+- PostgreSQL gestionado en Railway.
+- Google como proveedor OAuth.
+- GitHub como repositorio.
+
+Los entornos proporcionan sus propias variables. La documentacion nunca debe incluir secretos, contrasenas, tokens o connection strings reales.
+
+## 8. Roadmap funcional
+
+Planeado, no implementado como flujo completo:
+
+- Checkout y pedidos reales.
+- Pagos.
+- Administracion del catalogo.
+- Gestion y trazabilidad avanzada de inventario.
+- Panel `/admin`.
+- Empleados, puestos, compensacion, turnos y asistencia.
+- POS y caja.
+- Nomina y auditoria interna.
+
+Los modelos preliminares que ya existen en Prisma deben reutilizarse y validarse cuando se implemente cada modulo; no se consideran funcionalidad terminada por si solos.

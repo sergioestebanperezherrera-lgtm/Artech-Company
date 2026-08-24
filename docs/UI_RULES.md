@@ -82,7 +82,8 @@ La tarjeta principal de una GPU RGB reutiliza el mismo estilo de borde RGB que l
 - Desktop mantiene panel dividido.
 - Mobile se adapta a una columna.
 - Campos vacios por defecto, con placeholders y autocomplete correctos.
-- Los accesos sociales son decorativos hasta que exista backend/OAuth.
+- Login y registro envian credenciales a la API real.
+- "Continuar con Google" inicia el flujo OAuth real del backend.
 - El cierre debe ser visible, accesible y funcionar con Escape.
 
 ## 10. Carrito
@@ -90,8 +91,9 @@ La tarjeta principal de una GPU RGB reutiliza el mismo estilo de borde RGB que l
 - El carrito existe como drawer global y pagina dedicada.
 - Permite revisar, actualizar y eliminar productos.
 - El checkout real no existe todavia.
-- Si el usuario intenta comprar sin sesion mock, se abre `AuthPanel`.
+- Si el usuario intenta comprar sin una sesion valida, se abre `AuthPanel`.
+- Los items del carrito siguen persistidos localmente y no se sincronizan con PostgreSQL.
 
 ## 11. Cuenta
 
-El panel de cuenta muestra datos mock editables y estados vacios para pedidos/direcciones mientras no exista backend.
+El panel de cuenta muestra nombre y email de la sesion real y permite cerrarla. Edicion de perfil, pedidos y direcciones siguen pendientes.

@@ -38,9 +38,10 @@ Reglas de comportamiento e interaccion del frontend. Para apariencia visual, ver
 ## 6. Gate de Autenticacion
 
 - El usuario puede revisar carrito sin iniciar sesion.
-- Al intentar comprar sin sesion mock, se abre `AuthPanel`.
+- Al intentar comprar sin una sesion valida, se abre `AuthPanel`.
 - El fondo se oscurece/desenfoca y la card mantiene foco visual.
-- No existe checkout real todavia.
+- Login, registro y Google OAuth crean una sesion real mediante el backend.
+- No existe checkout real ni creacion de pedidos todavia.
 
 ## 7. Login / Registro
 
@@ -50,19 +51,23 @@ Reglas de comportamiento e interaccion del frontend. Para apariencia visual, ver
 - Validaciones visibles y mensajes no tecnicos.
 - Boton mostrar/ocultar contrasena con `aria-label`.
 - Cierre con Escape y boton visible.
-- Los accesos sociales son pendientes de backend/OAuth.
+- "Continuar con Google" usa el endpoint OAuth real.
+- La sesion se recupera con `/api/auth/me` y no se persiste en `localStorage`.
 
 ## 8. Carrito
 
 - Permite agregar, actualizar cantidad y eliminar productos.
 - Debe persistir localmente.
+- No esta sincronizado con la cuenta o PostgreSQL.
 - El boton de carrito desde cualquier pagina abre el drawer global.
 - La pagina `/carrito` ofrece una vista dedicada del mismo contenido.
 
 ## 9. Moneda
 
-- El usuario puede alternar entre GTQ y USD.
+- GTQ es la unica moneda funcional visible actualmente.
 - La seleccion persiste localmente.
+- Si el store conserva un valor USD antiguo, la UI lo restablece a GTQ.
+- No debe inventarse un precio USD ni un tipo de cambio mientras `priceUSD` sea `null`.
 - Todo componente con precio debe usar el store global.
 
 ## 10. Errores

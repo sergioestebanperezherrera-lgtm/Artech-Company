@@ -56,7 +56,7 @@ Grid de categorias principales.
 Bloque de confianza: envio, garantia, soporte y pago seguro.
 
 ### `CurrencySelector`
-Selector de moneda para GTQ/USD.
+Selector preparado para moneda global. Actualmente expone solo GTQ porque la API devuelve `priceUSD: null` y no existe politica de conversion.
 
 ## `components/product/`
 
@@ -82,7 +82,7 @@ Componente de imagen de producto con fallback y carga apropiada.
 Vista principal de detalle: galeria, informacion, specs y relacionados.
 
 ### `ProductGallery`
-Galeria con imagen principal y miniaturas.
+Selector de imagen principal y miniaturas. Actualmente presenta placeholders textuales en detalle aunque recibe las rutas de imagen; la integracion visual de esos assets sigue pendiente.
 
 ### `SpecsTable`
 Tabla de especificaciones con comportamiento expandible cuando aplica.
@@ -120,20 +120,20 @@ Resumen de subtotal y acciones principales.
 ## `components/auth/`
 
 ### `AuthPanel`
-Modal de login/registro con sesion mock. Incluye cierre con Escape, bloqueo de scroll, focus trap, validaciones visibles y boton para mostrar/ocultar contrasena.
+Modal de login/registro conectado a la API real. Incluye cierre con Escape, bloqueo de scroll, focus trap, validaciones visibles, estados de carga y boton para mostrar/ocultar contrasena.
 
-Los accesos sociales son decorativos mientras no exista backend/OAuth.
+El acceso con Google inicia el flujo OAuth real del backend. No se almacenan tokens de autenticacion en `localStorage`.
 
 ## `components/user/`
 
 ### `AccountView`
-Vista del panel de usuario.
+Vista de cuenta basada en la sesion real. Permite iniciar sesion, continuar con Google, consultar identidad y cerrar sesion.
 
 ### `UserProfileCard`
-Datos mock de usuario editables localmente.
+Muestra nombre y email del usuario autenticado en modo lectura. La edicion de perfil no esta implementada.
 
 ### `OrdersEmptyState`
-Estado vacio para pedidos mientras no existe backend.
+Estado vacio mientras no existe un modulo operativo de pedidos.
 
 ## `components/motion/`
 

@@ -85,31 +85,36 @@ Estado: implementada.
 
 ### Fase 8 - Login / Registro
 
-Estado: implementada como mock frontend.
+Estado: implementada con backend real.
 
 - `AuthPanel`.
 - Validaciones.
 - Mostrar/ocultar contrasena.
 - Cierre con Escape.
-- Accesos sociales decorativos pendientes de backend/OAuth.
+- Registro y login email/password.
+- Google OAuth.
+- Sesiones persistentes mediante cookie HttpOnly.
 
 ### Fase 9 - Carrito
 
-Estado: implementada como frontend local.
+Estado: implementada localmente en frontend.
 
 - `CartDrawer`.
 - Pagina `/carrito`.
 - Agregar, actualizar y eliminar productos.
 - Persistencia local.
-- Gate de autenticacion mock para compra.
+- Gate conectado a la sesion real.
+- Checkout y sincronizacion con backend pendientes.
 
 ### Fase 10 - Panel de usuario
 
-Estado: implementada como mock frontend.
+Estado: implementada parcialmente con identidad real.
 
 - Vista `/cuenta`.
-- Datos de usuario mock.
+- Nombre y email obtenidos de la sesion.
+- Cierre de sesion real.
 - Estados vacios para pedidos/direcciones.
+- Edicion de perfil, direcciones e historial real pendientes.
 
 ### Fase 11 - Pulido final y QA
 
@@ -119,22 +124,61 @@ Estado: implementada.
 - Accesibilidad basica.
 - Microinteracciones.
 - Optimizaciones de rendimiento.
-- Pruebas E2E.
+- Suite E2E base; los casos legacy de auth requieren alineacion con el backend real.
 - Build de produccion verificado.
+
+## Backend Implementado
+
+### Fundacion
+
+Estado: implementada.
+
+- Backend independiente en `backend/` con Express y TypeScript.
+- PostgreSQL y Prisma ORM.
+- Configuracion por entorno, CORS con credenciales y manejo central de errores.
+- Despliegue independiente en Railway.
+
+### Identidad y autenticacion
+
+Estado: implementada para clientes.
+
+- `User`, `AuthAccount`, `Session`, `Role`, `Permission`, `UserRole` y `RolePermission`.
+- Registro y login email/password con hashes Argon2id.
+- Google OAuth.
+- Cookies HttpOnly adaptadas a desarrollo y produccion cross-site.
+- Endpoints de registro, login, sesion actual y logout.
+
+Roles y permisos forman parte de la respuesta de autenticacion, pero no existe panel para administrarlos.
+
+### Catalogo
+
+Estado: implementada.
+
+- `Category`, `Brand`, `Product`, `ProductImage` y `ProductSpecification`.
+- `Inventory` y calculo de stock disponible.
+- Endpoints de productos, detalle por slug, categorias y marcas.
+- Seed idempotente propiedad del backend.
+- Integracion progresiva del frontend con fallback mock solo en desarrollo.
+
+### Base comercial
+
+Estado: modelada, no operativa.
+
+- Prisma incluye `InventoryMovement`, `Sale`, `SaleItem` y `Payment`.
+- No existen endpoints, services de negocio, checkout ni interfaces administrativas para estos modelos.
 
 ## Proximas Etapas
 
-Estas etapas no estan implementadas y requieren definicion tecnica antes de construirse:
+Estas etapas no estan implementadas como flujos completos:
 
-- Backend/API.
-- Base de datos.
-- Autenticacion real.
-- Roles y permisos.
-- Administracion de productos.
-- Inventario.
-- Pedidos y ventas.
-- Sistema de empleados.
-- Panel administrativo.
-- POS/caja.
+- Checkout, pedidos y pagos reales.
+- Carrito persistido/sincronizado con la cuenta.
+- Administracion de productos, categorias, marcas e inventario.
+- Operaciones y trazabilidad avanzada de movimientos de inventario.
+- Gestion de roles y permisos.
+- Sistema de empleados, puestos, compensacion, turnos y asistencia.
+- Panel `/admin`.
+- POS y caja.
+- Nomina y auditoria interna.
 
-No hay una arquitectura definitiva decidida para estas etapas futuras. Cualquier decision debe documentarse antes de modificar servicios, modelos o flujos existentes.
+Algunos dominios ya tienen modelos preliminares en Prisma. Cada modulo futuro debe validar esos modelos, definir permisos y actualizar `API_CONTRACT.md` antes de exponer endpoints.
