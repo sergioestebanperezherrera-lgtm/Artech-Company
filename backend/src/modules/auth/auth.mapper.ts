@@ -1,14 +1,25 @@
 import type { AuthUserRecord, PublicAuthResponse } from "./auth.types";
 
-export function mapAuthUser(user: AuthUserRecord): PublicAuthResponse {
-  const roles = user.roles.map((userRole) => userRole.role.name);
+export function mapAuthorization(user: AuthUserRecord) {
+  const roles = new Set<string>();
   const permissions = new Set<string>();
 
   for (const userRole of user.roles) {
+    roles.add(userRole.role.name);
+
     for (const rolePermission of userRole.role.permissions) {
       permissions.add(rolePermission.permission.key);
     }
   }
+
+  return {
+    roles: Array.from(roles).sort(),
+    permissions: Array.from(permissions).sort(),
+  };
+}
+
+export function mapAuthUser(user: AuthUserRecord): PublicAuthResponse {
+  const authorization = mapAuthorization(user);
 
   return {
     user: {
@@ -17,7 +28,6 @@ export function mapAuthUser(user: AuthUserRecord): PublicAuthResponse {
       email: user.email,
       emailVerified: user.emailVerified,
     },
-    roles,
-    permissions: Array.from(permissions).sort(),
+    ...authorization,
   };
 }

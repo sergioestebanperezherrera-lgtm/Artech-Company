@@ -1,6 +1,13 @@
 import type { Prisma } from "@prisma/client";
 
 export const authUserInclude = {
+  employee: {
+    select: {
+      id: true,
+      code: true,
+      isActive: true,
+    },
+  },
   roles: {
     include: {
       role: {
@@ -34,5 +41,7 @@ export type PublicAuthResponse = {
 export type AuthSessionContext = {
   sessionId: string;
   user: AuthUserRecord;
+  roles: string[];
+  permissions: string[];
   expiresAt: Date;
 };

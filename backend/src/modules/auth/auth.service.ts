@@ -19,6 +19,7 @@ import {
   verifyPassword,
 } from "./auth.crypto";
 import { mapAuthUser } from "./auth.mapper";
+import { getAuthContext } from "./auth.middleware";
 import {
   createGoogleUser,
   createLocalUser,
@@ -28,7 +29,7 @@ import {
   findUserByEmail,
   linkGoogleAuthAccount,
 } from "./auth.repository";
-import { cleanupExpiredSessions, getSessionExpiresAt, resolveAuthSession } from "./auth.session";
+import { cleanupExpiredSessions, getSessionExpiresAt } from "./auth.session";
 import type { LoginInput, RegisterInput } from "./auth.validation";
 import type { Request, Response } from "express";
 
@@ -235,13 +236,8 @@ export async function login(input: LoginInput, response: Response) {
   return mapAuthUser(user);
 }
 
-export async function getCurrentAuth(request: Request) {
-  const session = await resolveAuthSession(request);
-
-  if (!session) {
-    throw new AppError("Authentication required.", 401);
-  }
-
+export function getCurrentAuth(request: Request) {
+  const session = getAuthContext(request);
   return mapAuthUser(session.user);
 }
 

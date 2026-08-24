@@ -2,6 +2,7 @@ import type { Request } from "express";
 import { env } from "../../config/env";
 import { hashSessionToken } from "./auth.crypto";
 import { getSessionTokenFromRequest } from "./auth.cookies";
+import { mapAuthorization } from "./auth.mapper";
 import {
   deleteExpiredSessions,
   deleteSessionByTokenHash,
@@ -42,10 +43,12 @@ export async function resolveAuthSession(
   }
 
   await updateSessionLastUsed(session.id, now);
+  const authorization = mapAuthorization(session.user);
 
   return {
     sessionId: session.id,
     user: session.user,
+    ...authorization,
     expiresAt: session.expiresAt,
   };
 }

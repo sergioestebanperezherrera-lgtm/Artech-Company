@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminRoutes from "../modules/admin/admin.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import brandRoutes from "../modules/brands/brands.routes";
 import categoryRoutes from "../modules/categories/categories.routes";
@@ -9,6 +10,7 @@ const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
+router.use("/admin", adminRoutes);
 router.use("/products", productRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/brands", brandRoutes);

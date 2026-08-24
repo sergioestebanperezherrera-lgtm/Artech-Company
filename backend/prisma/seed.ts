@@ -1,4 +1,6 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { seedRbac } from "./seed-rbac";
 import { brands } from "./seed-data/brands";
 import { categories } from "./seed-data/categories";
 import { products, type ProductSeed } from "./seed-data/products";
@@ -210,6 +212,7 @@ async function main() {
   await seedCategories();
   await seedBrands();
   await seedProducts();
+  const rbac = await seedRbac(prisma);
 
   const [
     categoryCount,
@@ -236,6 +239,7 @@ async function main() {
         images: imageCount,
         specifications: specificationCount,
         inventories: inventoryCount,
+        rbac,
       },
       null,
       2,
