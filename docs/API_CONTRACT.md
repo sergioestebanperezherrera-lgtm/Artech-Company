@@ -19,8 +19,9 @@ La URL base del frontend se configura con `NEXT_PUBLIC_API_URL`. El backend limi
 | `POST` | `/api/auth/logout` | Elimina la sesion si existe y limpia la cookie | No |
 | `GET` | `/api/auth/google` | Inicia Google OAuth mediante redireccion | No |
 | `GET` | `/api/auth/google/callback` | Valida el callback de Google y redirige al frontend | No |
+| `GET` | `/api/admin/me` | Devuelve identidad y permisos para el futuro panel interno | Si, con permisos internos |
 
-No existen endpoints para carrito, pedidos, ventas, pagos, movimientos de inventario, empleados, roles administrativos, POS o caja.
+No existen endpoints CRUD para carrito, pedidos, ventas, pagos, movimientos de inventario, empleados, roles, POS o caja.
 
 ## 2. Health
 
@@ -176,7 +177,29 @@ Elimina la sesion asociada a la cookie cuando existe y limpia la cookie del nave
 
 Las URLs se obtienen de `FRONTEND_URL` y `GOOGLE_REDIRECT_URI`; no estan hardcodeadas para produccion.
 
-## 5. Cookies
+## 5. Seguridad interna
+
+`GET /api/admin/me` usa la sesion real y solo permite acceso a usuarios con al menos un rol y un permiso interno efectivo. Responde `401` sin sesion valida y `403` para clientes sin acceso interno o empleados desactivados.
+
+Respuesta `200`:
+
+```json
+{
+  "user": {
+    "id": "string",
+    "name": "string",
+    "email": "string"
+  },
+  "employee": null,
+  "roles": ["SUPER_ADMIN"],
+  "permissions": ["employee.read"],
+  "canAccessAdmin": true
+}
+```
+
+`employee` puede ser `null` o incluir `id`, `code` e `isActive`. La autorizacion se resuelve exclusivamente desde `Session`, `UserRole` y `RolePermission` en PostgreSQL. El middleware reutilizable `requirePermission(key)` queda preparado para futuros endpoints administrativos.
+
+## 6. Cookies
 
 La cookie principal usa el nombre configurado en `AUTH_COOKIE_NAME` (`artech_session` por defecto):
 
@@ -188,7 +211,7 @@ La cookie principal usa el nombre configurado en `AUTH_COOKIE_NAME` (`artech_ses
 
 Google OAuth usa ademas una cookie HttpOnly temporal para validar `state`, limitada al callback y con vigencia de 10 minutos.
 
-## 6. Errores
+## 7. Errores
 
 Los errores esperados responden:
 
@@ -200,7 +223,7 @@ Los errores esperados responden:
 
 Rutas inexistentes responden `404`; errores no controlados responden `500` con `Internal server error.`. El backend registra el error interno sin enviar stack traces al cliente.
 
-## 7. Consumo desde el frontend
+## 8. Consumo desde el frontend
 
 - Los services de catalogo usan `fetch` asincrono y revalidacion de Next.js.
 - El frontend envia `credentials: "include"` en las solicitudes de auth.

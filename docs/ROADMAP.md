@@ -150,6 +150,19 @@ Estado: implementada para clientes.
 
 Roles y permisos forman parte de la respuesta de autenticacion, pero no existe panel para administrarlos.
 
+### Admin Phase 1 - Seguridad interna / RBAC
+
+Estado: implementada.
+
+- Roles y permisos iniciales mediante seed idempotente.
+- Matriz `RolePermission` para `SUPER_ADMIN`, `STORE_MANAGER`, `CASHIER`, `INVENTORY_CLERK` y `HR_ACCOUNTANT`.
+- Contexto de sesion tipado en requests autenticadas.
+- Middlewares `requireAuth`, `requireAdminAccess` y `requirePermission`.
+- Endpoint `GET /api/admin/me` con respuestas `401`, `403` y `200`.
+- Script manual `npm run admin:grant -- <email>` para desarrollo; no crea usuarios ni credenciales.
+
+No incluye UI `/admin`, CRUD de empleados, gestion de roles, POS, caja o nomina.
+
 ### Catalogo
 
 Estado: implementada.

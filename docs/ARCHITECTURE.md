@@ -94,6 +94,7 @@ Modulos HTTP implementados:
 - `categories`
 - `brands`
 - `auth`
+- `admin` (identidad interna y autorizacion base)
 
 CORS usa una lista de origenes configurada por `CORS_ORIGIN` y `credentials: true`; no usa wildcard. Las redirecciones OAuth se construyen desde `FRONTEND_URL`, y el callback se configura con `GOOGLE_REDIRECT_URI`.
 
@@ -151,6 +152,7 @@ La presencia de estos modelos y sus migraciones no equivale a una implementacion
 | Catalogo PostgreSQL -> API -> frontend | Implementado |
 | Registro, login, Google OAuth y logout | Implementado |
 | Roles/permisos en respuestas de auth | Infraestructura disponible; sin panel de gestion |
+| Seguridad interna RBAC y `/api/admin/me` | Implementado |
 | Carrito | Implementado localmente en frontend |
 | Inventario | Modelo y lectura de stock implementados; operaciones administrativas pendientes |
 | Ventas y pagos | Modelos existentes; sin endpoints ni flujo de checkout |
