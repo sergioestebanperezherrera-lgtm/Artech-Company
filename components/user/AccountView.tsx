@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { UserRound } from "lucide-react";
+import { ShieldCheck, UserRound } from "lucide-react";
 import { Button, Card, getButtonClassName } from "@/components/ui";
+import { adminService } from "@/lib/services/adminService";
 import { authService } from "@/lib/services/authService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
 import { UserProfileCard } from "./UserProfileCard";
@@ -23,13 +24,39 @@ export function AccountView() {
     return new URLSearchParams(window.location.search).get("auth");
   });
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [adminAccessUserId, setAdminAccessUserId] = useState<string | null>(null);
   const showGoogleError = initialAuthParam === "google_error" && !isAuthenticated;
+  const userId = user?.id;
+  const hasAdminAccess = Boolean(userId && adminAccessUserId === userId);
 
   useEffect(() => {
     if (initialAuthParam && (initialAuthParam !== "google_error" || isAuthenticated)) {
       router.replace("/cuenta");
     }
   }, [initialAuthParam, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    void adminService
+      .getContext(controller.signal)
+      .then((identity) => {
+        setAdminAccessUserId(identity.canAccessAdmin ? identity.user.id : null);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setAdminAccessUserId(null);
+      });
+
+    return () => controller.abort();
+  }, [userId]);
 
   const openAuth = () => {
     window.dispatchEvent(
@@ -139,15 +166,26 @@ export function AccountView() {
                 Tu sesión está protegida por una cookie HttpOnly gestionada por el backend.
               </p>
             </div>
-            <Button
-              variant="primary-on-light"
-              className="w-max"
-              isLoading={isSigningOut}
-              loadingLabel="Cerrando sesión..."
-              onClick={handleSignOut}
-            >
-              Cerrar sesión
-            </Button>
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              {hasAdminAccess ? (
+                <Link
+                  href="/admin"
+                  className={getButtonClassName("outline-on-light", "w-max")}
+                >
+                  <ShieldCheck aria-hidden="true" size={16} strokeWidth={1.7} />
+                  Panel de administración
+                </Link>
+              ) : null}
+              <Button
+                variant="primary-on-light"
+                className="w-max"
+                isLoading={isSigningOut}
+                loadingLabel="Cerrando sesión..."
+                onClick={handleSignOut}
+              >
+                Cerrar sesión
+              </Button>
+            </div>
           </Card>
         </div>
       </div>
