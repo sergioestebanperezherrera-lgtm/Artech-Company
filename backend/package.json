@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "seed": "tsx prisma/seed.ts",
     "seed:rbac": "tsx scripts/seed-rbac.ts",
-    "test:admin": "tsx --test tests/admin-rbac.test.ts tests/admin-bootstrap.test.ts",
+    "test:admin": "tsx --test tests/admin-rbac.test.ts tests/admin-bootstrap.test.ts tests/admin-employees.test.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

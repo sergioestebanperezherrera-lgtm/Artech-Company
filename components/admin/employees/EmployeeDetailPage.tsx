@@ -1,0 +1,485 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  BriefcaseBusiness,
+  Pencil,
+  UserCheck,
+  UserMinus,
+} from "lucide-react";
+import { Button } from "@/components/ui";
+import { employeeService, positionService } from "@/lib/services/employeeService";
+import type { EmployeeDetail, Position } from "@/lib/types";
+import { AdminModal } from "../AdminModal";
+import { useAdminIdentity } from "../AdminContext";
+import { EmployeeStatusBadge } from "./EmployeeStatusBadge";
+import {
+  addDays,
+  formatAdminDate,
+  getAdminActionError,
+  getTodayDate,
+} from "./employeeUi";
+
+type EmployeeAction = "edit" | "change" | "terminate" | "reactivate" | null;
+
+type EmployeeDetailPageProps = {
+  employeeId: string;
+};
+
+const actionCopy: Record<Exclude<EmployeeAction, null>, { title: string; description: string }> = {
+  edit: {
+    title: "Editar empleado",
+    description: "Actualiza unicamente los datos de contacto y perfil.",
+  },
+  change: {
+    title: "Cambiar puesto",
+    description: "El empleo actual se cerrara y el nuevo quedara activo.",
+  },
+  terminate: {
+    title: "Finalizar relacion laboral",
+    description: "El historial se conservara y la cuenta de usuario no sera eliminada.",
+  },
+  reactivate: {
+    title: "Reactivar empleado",
+    description: "Crea un nuevo periodo laboral sin alterar el historial anterior.",
+  },
+};
+
+export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
+  const identity = useAdminIdentity();
+  const canUpdate = identity.permissions.includes("employee.update");
+  const canDeactivate = identity.permissions.includes("employee.deactivate");
+  const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [action, setAction] = useState<EmployeeAction>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void Promise.all([
+      employeeService.get(employeeId, controller.signal),
+      positionService.list(controller.signal),
+    ])
+      .then(([employeeResult, positionResult]) => {
+        setEmployee(employeeResult);
+        setPositions(positionResult);
+      })
+      .catch((loadError: unknown) => {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") {
+          return;
+        }
+        setError(
+          getAdminActionError(loadError, "No se pudo cargar la ficha del empleado."),
+        );
+      });
+
+    return () => controller.abort();
+  }, [employeeId]);
+
+  const closeAction = () => {
+    if (!isSubmitting) {
+      setAction(null);
+      setError("");
+    }
+  };
+
+  const handleAction = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!employee || !action || isSubmitting) {
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    setIsSubmitting(true);
+    setError("");
+    setStatusMessage("");
+
+    try {
+      let updated: EmployeeDetail;
+
+      if (action === "edit") {
+        const email = String(formData.get("email") ?? "").trim();
+        const phone = String(formData.get("phone") ?? "").trim();
+        updated = await employeeService.update(employee.id, {
+          firstName: String(formData.get("firstName") ?? "").trim(),
+          lastName: String(formData.get("lastName") ?? "").trim(),
+          email: email || null,
+          phone: phone || null,
+        });
+        setStatusMessage("Los datos del empleado fueron actualizados.");
+      } else if (action === "terminate") {
+        const notes = String(formData.get("notes") ?? "").trim();
+        updated = await employeeService.terminate(employee.id, {
+          endDate: String(formData.get("endDate") ?? ""),
+          ...(notes ? { notes } : {}),
+        });
+        setStatusMessage("La relacion laboral fue finalizada.");
+      } else {
+        const notes = String(formData.get("notes") ?? "").trim();
+        const input = {
+          positionId: String(formData.get("positionId") ?? ""),
+          startDate: String(formData.get("startDate") ?? ""),
+          ...(notes ? { notes } : {}),
+        };
+        updated =
+          action === "change"
+            ? await employeeService.changePosition(employee.id, input)
+            : await employeeService.reactivate(employee.id, input);
+        setStatusMessage(
+          action === "change"
+            ? "El cambio de puesto quedo registrado."
+            : "El empleado fue reactivado.",
+        );
+      }
+
+      setEmployee(updated);
+      setAction(null);
+    } catch (actionError) {
+      setError(
+        getAdminActionError(
+          actionError,
+          "No pudimos completar la operacion. Intenta nuevamente.",
+        ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!employee) {
+    return (
+      <div>
+        <Link
+          href="/admin/employees"
+          className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white"
+        >
+          <ArrowLeft aria-hidden="true" size={17} />
+          Volver a empleados
+        </Link>
+        {error ? (
+          <div className="admin-empty-panel mt-8 px-5 py-10 text-center">
+            <h1 className="text-lg font-medium text-white">No se pudo abrir la ficha.</h1>
+            <p className="mt-2 text-sm text-white/50" role="alert">{error}</p>
+          </div>
+        ) : (
+          <div className="admin-panel mt-8 space-y-2 p-5" role="status">
+            <span className="sr-only">Cargando ficha...</span>
+            <div className="admin-skeleton h-8 w-52 rounded-md" />
+            <div className="admin-skeleton h-24 rounded-md" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const activePositions = positions.filter((position) => position.isActive);
+  const changePositions = activePositions.filter(
+    (position) => position.id !== employee.currentEmployment?.position.id,
+  );
+  const latestEmployment = employee.employments[0] ?? null;
+  const minimumChangeDate = employee.currentEmployment
+    ? addDays(employee.currentEmployment.startDate, 1)
+    : getTodayDate();
+  const minimumReactivationDate = latestEmployment?.endDate
+    ? addDays(latestEmployment.endDate, 1)
+    : getTodayDate();
+
+  return (
+    <div>
+      <Link
+        href="/admin/employees"
+        className="inline-flex items-center gap-2 text-sm text-white/50 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2"
+      >
+        <ArrowLeft aria-hidden="true" size={17} />
+        Volver a empleados
+      </Link>
+
+      <header className="mt-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-mono text-xs text-white/40">{employee.code}</p>
+            <EmployeeStatusBadge active={employee.isActive} />
+          </div>
+          <h1 className="mt-3 break-words text-3xl font-medium text-white sm:text-4xl">
+            {employee.name}
+          </h1>
+          <p className="mt-3 text-sm text-white/45">
+            {employee.currentEmployment?.position.name ?? "Sin puesto activo"}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {canUpdate ? (
+            <Button
+              variant="outline-on-dark"
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              onClick={() => setAction("edit")}
+            >
+              <Pencil aria-hidden="true" size={15} />
+              Editar
+            </Button>
+          ) : null}
+          {employee.isActive && canUpdate ? (
+            <Button
+              variant="outline-on-dark"
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              disabled={changePositions.length === 0}
+              onClick={() => setAction("change")}
+            >
+              <BriefcaseBusiness aria-hidden="true" size={15} />
+              Cambiar puesto
+            </Button>
+          ) : null}
+          {employee.isActive && canDeactivate ? (
+            <Button
+              variant="outline-on-dark"
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              onClick={() => setAction("terminate")}
+            >
+              <UserMinus aria-hidden="true" size={15} />
+              Finalizar relacion
+            </Button>
+          ) : null}
+          {!employee.isActive && canUpdate ? (
+            <Button
+              variant="primary-on-dark"
+              className="min-h-10 rounded-lg px-3"
+              disabled={activePositions.length === 0}
+              onClick={() => setAction("reactivate")}
+            >
+              <UserCheck aria-hidden="true" size={15} />
+              Reactivar
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      <p className="mt-5 min-h-5 text-sm text-white/65" aria-live="polite">
+        {statusMessage}
+      </p>
+
+      <div className="mt-3 grid gap-4 lg:grid-cols-3">
+        <section className="admin-panel p-5 lg:col-span-2" aria-labelledby="employee-profile">
+          <h2 id="employee-profile" className="text-base font-medium text-white">Perfil</h2>
+          <dl className="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-white/35">Email</dt>
+              <dd className="mt-1 break-words text-sm text-white/75">
+                {employee.email ?? "No registrado"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-white/35">Telefono</dt>
+              <dd className="mt-1 text-sm text-white/75">
+                {employee.phone ?? "No registrado"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-white/35">Puesto actual</dt>
+              <dd className="mt-1 text-sm text-white/75">
+                {employee.currentEmployment?.position.name ?? "Sin puesto activo"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-white/35">Inicio del periodo</dt>
+              <dd className="mt-1 text-sm text-white/75">
+                {formatAdminDate(employee.currentEmployment?.startDate ?? null)}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="admin-panel p-5" aria-labelledby="employee-access">
+          <h2 id="employee-access" className="text-base font-medium text-white">
+            Acceso al sistema
+          </h2>
+          <p className="mt-4 text-sm font-medium text-white/75">
+            {employee.hasSystemAccess ? "Cuenta vinculada" : "Sin cuenta vinculada"}
+          </p>
+          <p className="mt-2 break-words text-sm leading-6 text-white/45">
+            {employee.user
+              ? `${employee.user.email} - ${employee.user.isActive ? "activa" : "inactiva"}`
+              : "El registro laboral no crea credenciales automaticamente."}
+          </p>
+        </section>
+      </div>
+
+      <section className="mt-8" aria-labelledby="employment-history">
+        <h2 id="employment-history" className="text-lg font-medium text-white">
+          Historial laboral
+        </h2>
+        <div className="admin-module-list mt-4 divide-y divide-white/[0.07]">
+          {employee.employments.map((employment) => (
+            <article
+              key={employment.id}
+              className="grid gap-4 px-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-5"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-sm font-medium text-white">
+                    {employment.position.name}
+                  </h3>
+                  <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/45">
+                    {employment.status === "ACTIVE" ? "Actual" : "Finalizado"}
+                  </span>
+                </div>
+                {employment.notes ? (
+                  <p className="mt-2 text-sm leading-6 text-white/45">{employment.notes}</p>
+                ) : null}
+              </div>
+              <p className="text-sm text-white/55 sm:text-right">
+                {formatAdminDate(employment.startDate)}
+                <span className="mx-2 text-white/20">-</span>
+                {employment.endDate ? formatAdminDate(employment.endDate) : "Actual"}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {action ? (
+        <AdminModal
+          open
+          title={actionCopy[action].title}
+          description={actionCopy[action].description}
+          onClose={closeAction}
+        >
+          <form className="space-y-5" onSubmit={handleAction}>
+            {action === "edit" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="admin-form-label">
+                  Nombre
+                  <input
+                    className="admin-form-control"
+                    name="firstName"
+                    defaultValue={employee.firstName ?? ""}
+                    maxLength={100}
+                    required
+                  />
+                </label>
+                <label className="admin-form-label">
+                  Apellido
+                  <input
+                    className="admin-form-control"
+                    name="lastName"
+                    defaultValue={employee.lastName ?? ""}
+                    maxLength={100}
+                    required
+                  />
+                </label>
+                <label className="admin-form-label">
+                  Email
+                  <input
+                    className="admin-form-control"
+                    name="email"
+                    type="email"
+                    defaultValue={employee.email ?? ""}
+                    maxLength={254}
+                  />
+                </label>
+                <label className="admin-form-label">
+                  Telefono
+                  <input
+                    className="admin-form-control"
+                    name="phone"
+                    type="tel"
+                    defaultValue={employee.phone ?? ""}
+                    maxLength={30}
+                  />
+                </label>
+              </div>
+            ) : action === "terminate" ? (
+              <>
+                <label className="admin-form-label">
+                  Ultimo dia laboral
+                  <input
+                    className="admin-form-control"
+                    name="endDate"
+                    type="date"
+                    min={employee.currentEmployment?.startDate}
+                    defaultValue={getTodayDate()}
+                    required
+                  />
+                </label>
+                <label className="admin-form-label">
+                  Nota <span className="text-white/35">(opcional)</span>
+                  <textarea
+                    className="admin-form-control min-h-24 resize-y"
+                    name="notes"
+                    maxLength={500}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="admin-form-label">
+                  Nuevo puesto
+                  <select className="admin-form-control" name="positionId" required>
+                    {(action === "change" ? changePositions : activePositions).map(
+                      (position) => (
+                        <option key={position.id} value={position.id}>
+                          {position.name}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <label className="admin-form-label">
+                  Fecha de inicio
+                  <input
+                    className="admin-form-control"
+                    name="startDate"
+                    type="date"
+                    min={
+                      action === "change" ? minimumChangeDate : minimumReactivationDate
+                    }
+                    defaultValue={
+                      action === "change" ? minimumChangeDate : minimumReactivationDate
+                    }
+                    required
+                  />
+                </label>
+                <label className="admin-form-label">
+                  Nota <span className="text-white/35">(opcional)</span>
+                  <textarea
+                    className="admin-form-control min-h-24 resize-y"
+                    name="notes"
+                    maxLength={500}
+                  />
+                </label>
+              </>
+            )}
+
+            <p className="min-h-5 text-sm text-white/65" role="alert" aria-live="polite">
+              {error}
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline-on-dark"
+                className="rounded-lg border-white/10"
+                disabled={isSubmitting}
+                onClick={closeAction}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant={action === "terminate" ? "outline-on-dark" : "primary-on-dark"}
+                className="rounded-lg"
+                isLoading={isSubmitting}
+                loadingLabel="Guardando..."
+              >
+                Confirmar
+              </Button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
+    </div>
+  );
+}

@@ -43,6 +43,64 @@ function isAdminContext(value: unknown): value is AdminContext {
   );
 }
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload: unknown = await response.json();
+
+    if (
+      isRecord(payload) &&
+      typeof payload.message === "string" &&
+      payload.message.trim()
+    ) {
+      return payload.message;
+    }
+  } catch {
+    // The status code still provides a stable failure signal.
+  }
+
+  return fallback;
+}
+
+export async function adminRequest<T>(
+  path: string,
+  options: RequestInit & { errorMessage?: string } = {},
+): Promise<T> {
+  const { errorMessage, ...requestOptions } = options;
+  const fallback = errorMessage ?? "No pudimos completar la accion.";
+  let response: Response;
+
+  try {
+    response = await fetch(getApiUrl(path), {
+      ...requestOptions,
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        ...(requestOptions.body ? { "Content-Type": "application/json" } : {}),
+        ...requestOptions.headers,
+      },
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new AdminServiceError(fallback, null);
+  }
+
+  if (!response.ok) {
+    throw new AdminServiceError(
+      await readErrorMessage(response, fallback),
+      response.status,
+    );
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new AdminServiceError(fallback, response.status);
+  }
+}
+
 async function getAdminContext(signal?: AbortSignal) {
   let response: Response;
 

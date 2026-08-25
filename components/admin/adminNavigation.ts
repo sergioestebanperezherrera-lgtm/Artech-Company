@@ -139,7 +139,11 @@ export function getVisibleAdminGroups(permissions: string[]) {
 export function getAdminItemByPath(pathname: string) {
   return adminNavigationGroups
     .flatMap((group) => group.items)
-    .find((item) => item.href === pathname);
+    .find(
+      (item) =>
+        item.href === pathname ||
+        (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)),
+    );
 }
 
 export function getAdminItemBySlug(slug: string) {

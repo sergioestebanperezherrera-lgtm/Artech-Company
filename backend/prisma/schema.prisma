@@ -54,6 +54,11 @@ enum AuthProvider {
   GOOGLE
 }
 
+enum EmploymentStatus {
+  ACTIVE
+  ENDED
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -103,12 +108,53 @@ model Employee {
   id        String   @id @default(cuid())
   userId    String?  @unique
   code      String   @unique
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  sales Sale[] @relation("EmployeeSales")
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employments Employment[]
+  sales       Sale[]       @relation("EmployeeSales")
+
+  @@index([isActive])
+}
+
+model Position {
+  id             String   @id @default(cuid())
+  name           String
+  normalizedName String   @unique
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employments Employment[]
+
+  @@index([isActive])
+}
+
+model Employment {
+  id         String           @id @default(cuid())
+  employeeId String
+  positionId String
+  startDate  DateTime         @db.Date
+  endDate    DateTime?        @db.Date
+  status     EmploymentStatus @default(ACTIVE)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  position Position @relation(fields: [positionId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId])
+  @@index([positionId])
+  @@index([status])
+  @@index([employeeId, startDate])
 }
 
 model Role {

@@ -39,8 +39,9 @@ export function requirePermission(permissionKey: string): RequestHandler {
   return async (request, _response, next) => {
     try {
       const auth = await resolveRequiredAuth(request);
+      const inactiveEmployee = auth.user.employee?.isActive === false;
 
-      if (!auth.permissions.includes(permissionKey)) {
+      if (inactiveEmployee || !auth.permissions.includes(permissionKey)) {
         next(new AppError("Permission denied.", 403));
         return;
       }
