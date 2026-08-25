@@ -10,6 +10,7 @@ import {
   ReceiptText,
   ScrollText,
   ShieldCheck,
+  Tags,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -80,6 +81,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         slug: "products",
         permission: "catalog.manage",
         icon: PackageSearch,
+      },
+      {
+        label: "Categorías",
+        href: "/admin/categories",
+        slug: "categories",
+        permission: "catalog.manage",
+        icon: Tags,
       },
       {
         label: "Inventario",

@@ -1,5 +1,16 @@
 export type { Brand } from "./brand";
 export type {
+  AdminBrand,
+  AdminCatalogRef,
+  AdminCategory,
+  AdminProduct,
+  AdminProductFilters,
+  AdminProductImage,
+  AdminProductSpecification,
+  AdminSaveCategoryInput,
+  AdminSaveProductInput,
+} from "./catalogAdmin";
+export type {
   AttendanceEmployee,
   AttendanceFilters,
   AttendanceRecord,

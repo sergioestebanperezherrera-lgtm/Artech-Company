@@ -13,6 +13,8 @@ import cashRoutes from "../cash/cash.routes";
 import posRoutes from "../pos/pos.routes";
 import inventoryRoutes from "../inventory/inventory.routes";
 import payrollRoutes from "../payroll/payroll.routes";
+import productsAdminRoutes from "../catalog/products.admin.routes";
+import categoriesAdminRoutes from "../catalog/categories.admin.routes";
 
 const router = Router();
 
@@ -30,5 +32,7 @@ router.use("/pos", posRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/inventory", inventoryRoutes);
 router.use("/payroll", payrollRoutes);
+router.use("/products", productsAdminRoutes);
+router.use("/categories", categoriesAdminRoutes);
 
 export default router;
