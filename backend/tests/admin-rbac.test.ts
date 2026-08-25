@@ -158,7 +158,7 @@ test("RBAC seed is idempotent and leaves commercial data unchanged", async () =>
   const second = await seedRbac(prisma);
   const catalogAfter = await getCommercialFingerprint();
 
-  assert.deepEqual(first, { roles: 5, permissions: 25, rolePermissions: 65 });
+  assert.deepEqual(first, { roles: 5, permissions: 27, rolePermissions: 70 });
   assert.deepEqual(second, first);
   assert.equal(catalogAfter, catalogBefore);
 

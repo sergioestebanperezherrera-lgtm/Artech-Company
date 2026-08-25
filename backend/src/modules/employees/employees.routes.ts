@@ -6,6 +6,10 @@ import {
   getEmployeeCompensationController,
 } from "./compensation.controller";
 import {
+  createShiftAssignmentController,
+  getEmployeeShiftsController,
+} from "../shifts/shifts.controller";
+import {
   changeEmployeePositionController,
   createEmployeeController,
   getEmployeeController,
@@ -36,6 +40,16 @@ router.post(
   "/:employeeId/compensation",
   requirePermission("salary.update"),
   asyncHandler(createCompensationPeriodController),
+);
+router.get(
+  "/:employeeId/shifts",
+  requirePermission("shift.read"),
+  asyncHandler(getEmployeeShiftsController),
+);
+router.post(
+  "/:employeeId/shifts",
+  requirePermission("shift.manage"),
+  asyncHandler(createShiftAssignmentController),
 );
 router.get(
   "/:id",

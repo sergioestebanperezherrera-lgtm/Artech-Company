@@ -15,6 +15,8 @@ const employeePermissions = [
   "employee.deactivate",
   "salary.read",
   "salary.update",
+  "shift.read",
+  "shift.manage",
 ];
 
 function assert(condition, message) {
@@ -84,7 +86,14 @@ function stopServer(child) {
 }
 
 function makeState() {
-  return { positions: [], employees: [], nextPosition: 1, nextEmployee: 1 };
+  return {
+    positions: [],
+    employees: [],
+    shifts: [],
+    nextPosition: 1,
+    nextEmployee: 1,
+    nextShift: 1,
+  };
 }
 
 function positionPayload(state, input) {
@@ -115,6 +124,7 @@ function employmentPayload(employee, position, startDate, notes = null) {
     },
     createdAt: timestamp,
     updatedAt: timestamp,
+    shiftAssignments: [],
   };
 }
 
@@ -138,6 +148,36 @@ function compensationPayload(employment, input) {
         name: employment.position.name,
       },
     },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function shiftPayload(state, input) {
+  const timestamp = new Date().toISOString();
+  return {
+    id: `shift-${state.nextShift++}`,
+    name: input.name,
+    code: input.code,
+    type: input.type,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    workDays: input.workDays,
+    isActive: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function shiftAssignmentPayload(employment, shift, input) {
+  const timestamp = new Date().toISOString();
+  return {
+    id: `shift-assignment-${employment.id}-${employment.shiftAssignments.length + 1}`,
+    employmentId: employment.id,
+    shiftId: shift.id,
+    effectiveFrom: input.effectiveFrom,
+    effectiveTo: null,
+    shift,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -208,6 +248,15 @@ function closeOpenCompensation(employment, endDate) {
   }
 }
 
+function closeOpenShift(employment, endDate) {
+  const open = employment?.shiftAssignments?.find(
+    (assignment) => assignment.effectiveTo === null,
+  );
+  if (open) {
+    open.effectiveTo = endDate;
+  }
+}
+
 function compensationResponse(employee) {
   const activeEmployment = employee.employments.find(
     (employment) => employment.status === "ACTIVE",
@@ -218,6 +267,45 @@ function compensationResponse(employee) {
   const current =
     activeEmployment?.compensationPeriods?.find((period) => period.effectiveTo === null) ??
     null;
+
+  return {
+    employee: {
+      id: employee.id,
+      code: employee.code,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      phone: employee.phone,
+      isActive: employee.isActive,
+    },
+    currentEmployment: activeEmployment
+      ? {
+          id: activeEmployment.id,
+          startDate: activeEmployment.startDate,
+          endDate: activeEmployment.endDate,
+          status: activeEmployment.status,
+          position: {
+            id: activeEmployment.position.id,
+            name: activeEmployment.position.name,
+          },
+        }
+      : null,
+    current,
+    history,
+  };
+}
+
+function shiftResponse(employee) {
+  const activeEmployment = employee.employments.find(
+    (employment) => employment.status === "ACTIVE",
+  );
+  const history = employee.employments
+    .flatMap((employment) => employment.shiftAssignments ?? [])
+    .sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
+  const current =
+    activeEmployment?.shiftAssignments?.find(
+      (assignment) => assignment.effectiveTo === null,
+    ) ?? null;
 
   return {
     employee: {
@@ -284,6 +372,39 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
       return;
     }
 
+    if (path === "/api/admin/shifts" && method === "GET") {
+      await fulfillJson(route, 200, state.shifts);
+      return;
+    }
+
+    if (path === "/api/admin/shifts" && method === "POST") {
+      const input = request.postDataJSON();
+      if (!input.workDays?.length) {
+        await fulfillJson(route, 400, { message: "At least one work day is required." });
+        return;
+      }
+      if (state.shifts.some((shift) => shift.code === input.code)) {
+        await fulfillJson(route, 409, { message: "The shift code already exists." });
+        return;
+      }
+      const shift = shiftPayload(state, input);
+      state.shifts.push(shift);
+      await fulfillJson(route, 201, shift);
+      return;
+    }
+
+    const shiftMatch = path.match(/^\/api\/admin\/shifts\/([^/]+)$/);
+    if (shiftMatch && method === "PATCH") {
+      const shift = state.shifts.find((item) => item.id === shiftMatch[1]);
+      if (!shift) {
+        await fulfillJson(route, 404, { message: "Shift not found." });
+        return;
+      }
+      Object.assign(shift, request.postDataJSON(), { updatedAt: new Date().toISOString() });
+      await fulfillJson(route, 200, shift);
+      return;
+    }
+
     if (path === "/api/admin/employees" && method === "GET") {
       let employees = state.employees.map(employeeSummary);
       const status = url.searchParams.get("status");
@@ -330,6 +451,11 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         return;
       }
 
+      if (match[2] === "shifts" && method === "GET") {
+        await fulfillJson(route, 200, shiftResponse(employee));
+        return;
+      }
+
       const input = method === "GET" ? undefined : request.postDataJSON();
 
       if (match[2] === "compensation" && method === "POST") {
@@ -359,6 +485,42 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         return;
       }
 
+      if (match[2] === "shifts" && method === "POST") {
+        if (!employee.isActive || !employee.currentEmployment) {
+          await fulfillJson(route, 409, {
+            message: "Employee has no active employment for shift changes.",
+          });
+          return;
+        }
+        const shift = state.shifts.find((item) => item.id === input.shiftId);
+        if (!shift) {
+          await fulfillJson(route, 404, { message: "Shift not found." });
+          return;
+        }
+        if (!shift.isActive) {
+          await fulfillJson(route, 409, { message: "The selected shift is inactive." });
+          return;
+        }
+        const activeEmployment = employee.currentEmployment;
+        const current = activeEmployment.shiftAssignments.find(
+          (assignment) => assignment.effectiveTo === null,
+        );
+        if (current && input.effectiveFrom <= current.effectiveFrom) {
+          await fulfillJson(route, 409, {
+            message: "New shift must start after the current shift start date.",
+          });
+          return;
+        }
+        if (current) {
+          current.effectiveTo = previousDay(input.effectiveFrom);
+        }
+        activeEmployment.shiftAssignments.unshift(
+          shiftAssignmentPayload(activeEmployment, shift, input),
+        );
+        await fulfillJson(route, 201, shiftResponse(employee));
+        return;
+      }
+
       if (!match[2] && method === "PATCH") {
         Object.assign(employee, input, {
           name: `${input.firstName ?? employee.firstName} ${input.lastName ?? employee.lastName}`,
@@ -372,6 +534,7 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         const previousEndDate = previousDay(input.startDate);
         employee.currentEmployment.endDate = previousEndDate;
         closeOpenCompensation(employee.currentEmployment, previousEndDate);
+        closeOpenShift(employee.currentEmployment, previousEndDate);
         const position = state.positions.find((item) => item.id === input.positionId);
         const nextEmployment = employmentPayload(employee, position, input.startDate, input.notes);
         nextEmployment.compensationPeriods = [];
@@ -386,6 +549,7 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         employee.currentEmployment.endDate = input.endDate;
         employee.currentEmployment.notes = input.notes ?? employee.currentEmployment.notes;
         closeOpenCompensation(employee.currentEmployment, input.endDate);
+        closeOpenShift(employee.currentEmployment, input.endDate);
         employee.currentEmployment = null;
         employee.isActive = false;
         employee.status = "INACTIVE";
@@ -450,7 +614,27 @@ try {
       await page.getByText("El puesto fue creado correctamente.").waitFor();
     }
 
-    await page.getByRole("link", { name: "Volver a empleados" }).click();
+    await page.goto(`${baseUrl}/admin/shifts`);
+    await page.getByRole("heading", { name: "Turnos", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Nuevo turno" }).click();
+    await page.getByLabel("Nombre").fill("Turno diurno QA");
+    await page.getByLabel("Codigo").fill("QA_DAY");
+    await page.getByLabel("Tipo").selectOption("DAY");
+    await page.getByLabel("Inicio").fill("08:00");
+    await page.getByLabel("Fin").fill("17:00");
+    await page.getByRole("button", { name: "Guardar turno" }).click();
+    await page.getByText("El turno fue creado correctamente.").waitFor();
+    await page.getByRole("button", { name: "Nuevo turno" }).click();
+    await page.getByLabel("Nombre").fill("Turno nocturno QA");
+    await page.getByLabel("Codigo").fill("QA_NIGHT");
+    await page.getByLabel("Tipo").selectOption("NIGHT");
+    await page.getByLabel("Inicio").fill("22:00");
+    await page.getByLabel("Fin").fill("06:00");
+    await page.getByRole("button", { name: "Guardar turno" }).click();
+    await page.getByText("El turno fue creado correctamente.").waitFor();
+    await page.getByText("22:00 - 06:00").waitFor();
+
+    await page.goto(`${baseUrl}/admin/employees`);
     await page.getByRole("button", { name: "Nuevo empleado" }).click();
     await page.getByLabel("Nombre", { exact: true }).fill("Ada");
     await page.getByLabel("Apellido", { exact: true }).fill("Lovelace");
@@ -464,6 +648,7 @@ try {
     await page.getByRole("heading", { name: "Ada Lovelace" }).waitFor();
     await page.getByText("Sin cuenta vinculada").waitFor();
     await page.getByText("Sin salario asignado").waitFor();
+    await page.getByText("Sin turno asignado").waitFor();
 
     await page.getByRole("button", { name: "Asignar salario" }).click();
     await page.getByLabel("Monto").fill("4000");
@@ -482,6 +667,25 @@ try {
     await page.getByText("Q4,500.50").first().waitFor();
     await page.getByText("Q4,000.00").first().waitFor();
 
+    await page.getByRole("button", { name: "Asignar turno" }).click();
+    await page
+      .getByLabel("Turno activo")
+      .selectOption({ label: "Turno diurno QA - Diurno - 08:00 - 17:00" });
+    await page.getByLabel("Fecha de vigencia").fill("2026-01-10");
+    await page.getByRole("button", { name: "Guardar turno" }).click();
+    await page.getByText("El turno fue asignado correctamente.").waitFor();
+    await page.getByText("Turno diurno QA").first().waitFor();
+
+    await page.getByRole("button", { name: "Cambiar turno" }).click();
+    await page
+      .getByLabel("Turno activo")
+      .selectOption({ label: "Turno nocturno QA - Nocturno - 22:00 - 06:00" });
+    await page.getByLabel("Fecha de vigencia").fill("2026-02-01");
+    await page.getByRole("button", { name: "Guardar turno" }).click();
+    await page.getByText("El cambio de turno fue registrado.").waitFor();
+    await page.getByText("Turno nocturno QA").first().waitFor();
+    await page.getByText("Turno diurno QA").first().waitFor();
+
     await page.getByRole("button", { name: "Editar", exact: true }).click();
     await page.getByLabel("Telefono", { exact: true }).fill("+502 5555 0202");
     await page.getByRole("button", { name: "Confirmar" }).click();
@@ -494,6 +698,7 @@ try {
     await page.getByRole("button", { name: "Confirmar" }).click();
     await page.getByText("El cambio de puesto quedo registrado.").waitFor();
     await page.getByText("Sin salario asignado").waitFor();
+    await page.getByText("Sin turno asignado").waitFor();
 
     await page.getByRole("button", { name: "Finalizar relacion" }).click();
     await page.getByLabel("Ultimo dia laboral").fill("2026-03-01");
@@ -524,6 +729,7 @@ try {
     await page
       .getByText("No tienes permiso para consultar informacion salarial.")
       .waitFor();
+    await page.getByText("No tienes permiso para consultar turnos.").waitFor();
     for (const action of ["Editar", "Cambiar puesto", "Finalizar relacion", "Reactivar"]) {
       assert(
         (await page.getByRole("button", { name: action, exact: true }).count()) === 0,
@@ -537,17 +743,24 @@ try {
     await context.close();
   });
 
-  await runTest("salary.read ve historial sin acciones de escritura", async () => {
+  await runTest("salary.read y shift.read ven historiales sin acciones de escritura", async () => {
     const { context, page } = await createPage(browser);
-    await mockAdminApi(page, state, ["employee.read", "salary.read"]);
+    await mockAdminApi(page, state, ["employee.read", "salary.read", "shift.read"]);
     await page.goto(`${baseUrl}/admin/employees/${state.employees[0].id}`);
     await page.getByRole("heading", { name: "Ada Lovelace" }).waitFor();
     await page.getByText("Historial de compensacion").waitFor();
     await page.getByText("Q4,500.50").first().waitFor();
     await page.getByText("Q4,000.00").first().waitFor();
+    await page.getByText("Historial de turnos").waitFor();
+    await page.getByText("Turno nocturno QA").first().waitFor();
+    await page.getByText("Turno diurno QA").first().waitFor();
     assert(
       (await page.getByRole("button", { name: /Asignar salario|Cambiar salario/ }).count()) === 0,
       "salary.read no debe mostrar acciones de compensacion.",
+    );
+    assert(
+      (await page.getByRole("button", { name: /Asignar turno|Cambiar turno/ }).count()) === 0,
+      "shift.read no debe mostrar acciones de turnos.",
     );
     await context.close();
   });
@@ -601,7 +814,7 @@ try {
     await context.close();
   });
 
-  for (const width of [375, 1440]) {
+  for (const width of [375, 768, 1024, 1440]) {
     await runTest(`responsive empleados ${width}px`, async () => {
       const { context, page } = await createPage(browser, {
         width,

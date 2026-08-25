@@ -3,15 +3,20 @@ import type {
   CreateCompensationInput,
   CreateEmployeeInput,
   CreatePositionInput,
+  CreateShiftAssignmentInput,
+  CreateShiftInput,
   EmployeeCompensation,
   EmployeeDetail,
   EmployeeFilters,
+  EmployeeShifts,
   EmployeeSummary,
   EmploymentTransitionInput,
   Position,
+  Shift,
   TerminateEmployeeInput,
   UpdateEmployeeInput,
   UpdatePositionInput,
+  UpdateShiftInput,
 } from "@/lib/types";
 
 function withJsonBody(method: string, body: unknown): RequestInit {
@@ -91,6 +96,18 @@ export const employeeService = {
       withJsonBody("POST", input),
     );
   },
+  getShifts(id: string, signal?: AbortSignal) {
+    return adminRequest<EmployeeShifts>(`/api/admin/employees/${id}/shifts`, {
+      signal,
+      errorMessage: "No se pudo cargar el turno del empleado.",
+    });
+  },
+  createShiftAssignment(id: string, input: CreateShiftAssignmentInput) {
+    return adminRequest<EmployeeShifts>(
+      `/api/admin/employees/${id}/shifts`,
+      withJsonBody("POST", input),
+    );
+  },
 };
 
 export const positionService = {
@@ -109,6 +126,24 @@ export const positionService = {
   update(id: string, input: UpdatePositionInput) {
     return adminRequest<Position>(
       `/api/admin/positions/${id}`,
+      withJsonBody("PATCH", input),
+    );
+  },
+};
+
+export const shiftService = {
+  list(signal?: AbortSignal) {
+    return adminRequest<Shift[]>("/api/admin/shifts", {
+      signal,
+      errorMessage: "No se pudo cargar la lista de turnos.",
+    });
+  },
+  create(input: CreateShiftInput) {
+    return adminRequest<Shift>("/api/admin/shifts", withJsonBody("POST", input));
+  },
+  update(id: string, input: UpdateShiftInput) {
+    return adminRequest<Shift>(
+      `/api/admin/shifts/${id}`,
       withJsonBody("PATCH", input),
     );
   },

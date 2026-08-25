@@ -88,6 +88,39 @@ async function closeOpenCompensationPeriod(
   });
 }
 
+async function closeOpenShiftAssignment(
+  transaction: Prisma.TransactionClient,
+  employmentId: string,
+  endDate: Date,
+) {
+  const currentShiftAssignment = await transaction.shiftAssignment.findFirst({
+    where: {
+      employmentId,
+      effectiveTo: null,
+    },
+    select: {
+      id: true,
+      effectiveFrom: true,
+    },
+  });
+
+  if (!currentShiftAssignment) {
+    return;
+  }
+
+  if (endDate < currentShiftAssignment.effectiveFrom) {
+    throw new AppError(
+      "Employment cannot end before the current shift assignment starts.",
+      400,
+    );
+  }
+
+  await transaction.shiftAssignment.update({
+    where: { id: currentShiftAssignment.id },
+    data: { effectiveTo: endDate },
+  });
+}
+
 function getDisplayName(
   employee: Pick<EmployeeListRecord, "code" | "firstName" | "lastName" | "user">,
 ) {
@@ -396,6 +429,11 @@ export async function changeEmployeePosition(
         activeEmployment.id,
         previousEmploymentEndDate,
       );
+      await closeOpenShiftAssignment(
+        transaction,
+        activeEmployment.id,
+        previousEmploymentEndDate,
+      );
       const employment = await transaction.employment.create({
         data: {
           employeeId: id,
@@ -470,6 +508,7 @@ export async function terminateEmployee(
         },
       });
       await closeOpenCompensationPeriod(transaction, activeEmployment.id, endDate);
+      await closeOpenShiftAssignment(transaction, activeEmployment.id, endDate);
       await transaction.employee.update({
         where: { id },
         data: { isActive: false },

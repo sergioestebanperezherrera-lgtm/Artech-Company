@@ -7,6 +7,7 @@ import {
 import employeeRoutes from "../employees/employees.routes";
 import positionRoutes from "../employees/positions.routes";
 import { adminMeController } from "./admin.controller";
+import shiftRoutes from "../shifts/shifts.routes";
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.get(
   asyncHandler(adminMeController),
 );
 router.use("/positions", positionRoutes);
+router.use("/shifts", shiftRoutes);
 router.use("/employees", employeeRoutes);
 
 export default router;

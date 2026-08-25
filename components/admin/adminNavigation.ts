@@ -1,6 +1,7 @@
 import {
   Boxes,
   CalendarCheck,
+  Clock3,
   HandCoins,
   Landmark,
   LayoutDashboard,
@@ -45,6 +46,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         slug: "employees",
         permission: "employee.read",
         icon: UsersRound,
+      },
+      {
+        label: "Turnos",
+        href: "/admin/shifts",
+        slug: "shifts",
+        permission: "shift.read",
+        icon: Clock3,
       },
       {
         label: "Asistencia",

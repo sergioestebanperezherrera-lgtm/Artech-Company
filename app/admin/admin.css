@@ -5,6 +5,10 @@
     linear-gradient(180deg, #080808, #050505 42%, #030303);
 }
 
+.admin-surface {
+  overflow-x: clip;
+}
+
 .admin-access-screen {
   display: flex;
   min-height: 100dvh;

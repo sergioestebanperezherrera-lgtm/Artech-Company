@@ -2,6 +2,15 @@ export type EmploymentStatus = "ACTIVE" | "ENDED";
 export type EmployeeStatus = "ACTIVE" | "INACTIVE";
 export type CompensationCurrency = "GTQ";
 export type PayFrequency = "MONTHLY" | "BIWEEKLY";
+export type ShiftType = "DAY" | "EVENING" | "NIGHT";
+export type Weekday =
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
 
 export type Position = {
   id: string;
@@ -99,6 +108,56 @@ export type EmployeeCompensation = {
   history: CompensationPeriod[];
 };
 
+export type Shift = {
+  id: string;
+  name: string;
+  code: string;
+  type: ShiftType;
+  startTime: string;
+  endTime: string;
+  workDays: Weekday[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShiftEmployment = {
+  id: string;
+  status: EmploymentStatus;
+  startDate: string;
+  endDate: string | null;
+  position: {
+    id: string;
+    name: string;
+  };
+};
+
+export type ShiftAssignment = {
+  id: string;
+  employmentId: string;
+  shiftId: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  shift: Shift;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EmployeeShifts = {
+  employee: {
+    id: string;
+    code: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    isActive: boolean;
+  };
+  currentEmployment: ShiftEmployment | null;
+  current: ShiftAssignment | null;
+  history: ShiftAssignment[];
+};
+
 export type EmployeeFilters = {
   status?: "all" | "active" | "inactive";
   positionId?: string;
@@ -136,6 +195,24 @@ export type CreateCompensationInput = {
   amount: string;
   currency: CompensationCurrency;
   payFrequency: PayFrequency;
+  effectiveFrom: string;
+};
+
+export type CreateShiftInput = {
+  name: string;
+  code: string;
+  type: ShiftType;
+  startTime: string;
+  endTime: string;
+  workDays: Weekday[];
+};
+
+export type UpdateShiftInput = Partial<CreateShiftInput> & {
+  isActive?: boolean;
+};
+
+export type CreateShiftAssignmentInput = {
+  shiftId: string;
   effectiveFrom: string;
 };
 

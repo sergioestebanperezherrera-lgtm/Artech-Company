@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   BriefcaseBusiness,
+  Clock3,
   DollarSign,
   Pencil,
   UserCheck,
@@ -12,16 +13,27 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { AdminServiceError } from "@/lib/services/adminService";
-import { employeeService, positionService } from "@/lib/services/employeeService";
+import {
+  employeeService,
+  positionService,
+  shiftService,
+} from "@/lib/services/employeeService";
 import type {
   CompensationPeriod,
   EmployeeCompensation,
   EmployeeDetail,
+  EmployeeShifts,
   PayFrequency,
   Position,
+  Shift,
 } from "@/lib/types";
 import { AdminModal } from "../AdminModal";
 import { useAdminIdentity } from "../AdminContext";
+import {
+  formatShiftDays,
+  formatShiftSchedule,
+  shiftTypeLabels,
+} from "../shifts/shiftUi";
 import { EmployeeStatusBadge } from "./EmployeeStatusBadge";
 import {
   addDays,
@@ -32,6 +44,7 @@ import {
 
 type EmployeeAction = "edit" | "change" | "terminate" | "reactivate" | null;
 type CompensationAction = "assign" | "change" | null;
+type ShiftAction = "assign" | "change" | null;
 
 type EmployeeDetailPageProps = {
   employeeId: string;
@@ -96,6 +109,30 @@ function getCompensationError(error: unknown, fallback: string) {
   return fallback;
 }
 
+function getShiftError(error: unknown, fallback: string) {
+  if (!(error instanceof AdminServiceError)) {
+    return fallback;
+  }
+
+  if (error.status === 400) {
+    return "Revisa el turno y la fecha de vigencia.";
+  }
+  if (error.status === 401) {
+    return "Tu sesion expiro. Inicia sesion nuevamente.";
+  }
+  if (error.status === 403) {
+    return "No tienes permiso para modificar turnos.";
+  }
+  if (error.status === 404) {
+    return "El empleado o turno ya no esta disponible.";
+  }
+  if (error.status === 409) {
+    return "La fecha seleccionada entra en conflicto con el turno actual.";
+  }
+
+  return fallback;
+}
+
 function validateAmountInput(value: string) {
   const trimmed = value.trim();
   return /^\d+(\.\d{1,2})?$/.test(trimmed) && Number(trimmed) > 0;
@@ -107,18 +144,27 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
   const canDeactivate = identity.permissions.includes("employee.deactivate");
   const canReadSalary = identity.permissions.includes("salary.read");
   const canUpdateSalary = identity.permissions.includes("salary.update");
+  const canReadShift = identity.permissions.includes("shift.read");
+  const canManageShift = identity.permissions.includes("shift.manage");
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [compensation, setCompensation] = useState<EmployeeCompensation | null>(null);
+  const [employeeShifts, setEmployeeShifts] = useState<EmployeeShifts | null>(null);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [isCompensationLoading, setIsCompensationLoading] = useState(canReadSalary);
+  const [isShiftLoading, setIsShiftLoading] = useState(canReadShift);
   const [compensationError, setCompensationError] = useState("");
+  const [shiftError, setShiftError] = useState("");
   const [action, setAction] = useState<EmployeeAction>(null);
   const [compensationAction, setCompensationAction] =
     useState<CompensationAction>(null);
+  const [shiftAction, setShiftAction] = useState<ShiftAction>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompensationSubmitting, setIsCompensationSubmitting] = useState(false);
+  const [isShiftSubmitting, setIsShiftSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [compensationFormError, setCompensationFormError] = useState("");
+  const [shiftFormError, setShiftFormError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
 
   const loadCompensation = useCallback(
@@ -150,6 +196,34 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       }
     },
     [canReadSalary, employeeId],
+  );
+
+  const loadEmployeeShifts = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!canReadShift) {
+        return null;
+      }
+
+      setIsShiftLoading(true);
+      setShiftError("");
+
+      try {
+        const result = await employeeService.getShifts(employeeId, signal);
+        setEmployeeShifts(result);
+        return result;
+      } catch (loadError: unknown) {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") {
+          return null;
+        }
+        setShiftError(
+          getShiftError(loadError, "No se pudo cargar el turno del empleado."),
+        );
+        return null;
+      } finally {
+        setIsShiftLoading(false);
+      }
+    },
+    [canReadShift, employeeId],
   );
 
   useEffect(() => {
@@ -204,6 +278,52 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
     return () => controller.abort();
   }, [canReadSalary, employeeId]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (canReadShift) {
+      void employeeService
+        .getShifts(employeeId, controller.signal)
+        .then((result) => {
+          setEmployeeShifts(result);
+          setShiftError("");
+        })
+        .catch((loadError: unknown) => {
+          if (loadError instanceof DOMException && loadError.name === "AbortError") {
+            return;
+          }
+          setShiftError(
+            getShiftError(loadError, "No se pudo cargar el turno del empleado."),
+          );
+        })
+        .finally(() => {
+          setIsShiftLoading(false);
+        });
+    }
+
+    return () => controller.abort();
+  }, [canReadShift, employeeId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (canManageShift) {
+      void shiftService
+        .list(controller.signal)
+        .then(setShifts)
+        .catch((loadError: unknown) => {
+          if (loadError instanceof DOMException && loadError.name === "AbortError") {
+            return;
+          }
+          setShiftError(
+            getShiftError(loadError, "No se pudo cargar la lista de turnos."),
+          );
+        });
+    }
+
+    return () => controller.abort();
+  }, [canManageShift]);
+
   const closeAction = () => {
     if (!isSubmitting) {
       setAction(null);
@@ -215,6 +335,13 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
     if (!isCompensationSubmitting) {
       setCompensationAction(null);
       setCompensationFormError("");
+    }
+  };
+
+  const closeShiftAction = () => {
+    if (!isShiftSubmitting) {
+      setShiftAction(null);
+      setShiftFormError("");
     }
   };
 
@@ -271,6 +398,9 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       setEmployee(updated);
       if (canReadSalary) {
         void loadCompensation();
+      }
+      if (canReadShift) {
+        void loadEmployeeShifts();
       }
       setAction(null);
     } catch (actionError) {
@@ -334,6 +464,47 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
     }
   };
 
+  const handleShiftSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!employee || !shiftAction || isShiftSubmitting) {
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const shiftId = String(formData.get("shiftId") ?? "");
+    const effectiveFrom = String(formData.get("effectiveFrom") ?? "");
+
+    if (!shiftId) {
+      setShiftFormError("Selecciona un turno activo.");
+      return;
+    }
+
+    setIsShiftSubmitting(true);
+    setShiftFormError("");
+    setStatusMessage("");
+
+    try {
+      const updated = await employeeService.createShiftAssignment(employee.id, {
+        shiftId,
+        effectiveFrom,
+      });
+      setEmployeeShifts(updated);
+      setShiftAction(null);
+      setStatusMessage(
+        shiftAction === "assign"
+          ? "El turno fue asignado correctamente."
+          : "El cambio de turno fue registrado.",
+      );
+    } catch (submitError) {
+      setShiftFormError(
+        getShiftError(submitError, "No pudimos guardar el turno. Intenta nuevamente."),
+      );
+    } finally {
+      setIsShiftSubmitting(false);
+    }
+  };
+
   if (!employee) {
     return (
       <div>
@@ -376,6 +547,16 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
     canUpdateSalary && employee.isActive && Boolean(employee.currentEmployment);
   const minimumCompensationDate = currentCompensation
     ? addDays(currentCompensation.effectiveFrom, 1)
+    : employee.currentEmployment?.startDate ?? getTodayDate();
+  const currentShiftAssignment = employeeShifts?.current ?? null;
+  const activeShifts = shifts.filter((shift) => shift.isActive);
+  const selectableShifts = activeShifts.filter(
+    (shift) => shift.id !== currentShiftAssignment?.shiftId,
+  );
+  const canMutateShift =
+    canManageShift && employee.isActive && Boolean(employee.currentEmployment);
+  const minimumShiftDate = currentShiftAssignment
+    ? addDays(currentShiftAssignment.effectiveFrom, 1)
     : employee.currentEmployment?.startDate ?? getTodayDate();
 
   return (
@@ -617,6 +798,136 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
               ) : (
                 <p className="mt-3 text-sm text-white/45">
                   No hay periodos salariales registrados.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="admin-panel mt-4 p-5" aria-labelledby="employee-shift">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 id="employee-shift" className="text-base font-medium text-white">
+              Turno
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
+              Horario vigente e historial de asignaciones del empleo.
+            </p>
+          </div>
+          {canReadShift && canMutateShift ? (
+            <Button
+              variant={currentShiftAssignment ? "outline-on-dark" : "primary-on-dark"}
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              disabled={isShiftLoading || selectableShifts.length === 0}
+              onClick={() => setShiftAction(currentShiftAssignment ? "change" : "assign")}
+            >
+              <Clock3 aria-hidden="true" size={15} />
+              {currentShiftAssignment ? "Cambiar turno" : "Asignar turno"}
+            </Button>
+          ) : null}
+        </div>
+
+        {!canReadShift ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white">
+              No tienes permiso para consultar turnos.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              Las asignaciones de horario permanecen ocultas para tu cuenta.
+            </p>
+          </div>
+        ) : isShiftLoading && !employeeShifts ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-3" role="status">
+            <span className="sr-only">Cargando turno...</span>
+            <div className="admin-skeleton h-20 rounded-md" />
+            <div className="admin-skeleton h-20 rounded-md" />
+            <div className="admin-skeleton h-20 rounded-md" />
+          </div>
+        ) : shiftError ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white" role="alert">
+              {shiftError}
+            </p>
+          </div>
+        ) : (
+          <>
+            {currentShiftAssignment ? (
+              <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Turno actual</dt>
+                  <dd className="mt-2 text-sm font-medium text-white">
+                    {currentShiftAssignment.shift.name}
+                  </dd>
+                  <p className="mt-1 font-mono text-xs text-white/35">
+                    {currentShiftAssignment.shift.code}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Tipo</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {shiftTypeLabels[currentShiftAssignment.shift.type]}
+                  </dd>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Horario</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {formatShiftSchedule(currentShiftAssignment.shift)}
+                  </dd>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Dias</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {formatShiftDays(currentShiftAssignment.shift.workDays)}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <div className="admin-empty-panel mt-5 px-5 py-6">
+                <p className="text-sm font-medium text-white">Sin turno asignado</p>
+                <p className="mt-2 text-sm leading-6 text-white/45">
+                  Este empleo activo todavia no tiene un horario definido.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-7">
+              <h3 className="text-sm font-medium text-white">Historial de turnos</h3>
+              {employeeShifts?.history.length ? (
+                <div className="admin-module-list mt-4 divide-y divide-white/[0.07]">
+                  {employeeShifts.history.map((assignment) => (
+                    <article
+                      key={assignment.id}
+                      className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-5"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-sm font-medium text-white">
+                            {assignment.shift.name}
+                          </p>
+                          <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/45">
+                            {assignment.effectiveTo ? "Finalizado" : "Actual"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-white/50">
+                          {shiftTypeLabels[assignment.shift.type]} -{" "}
+                          {formatShiftSchedule(assignment.shift)} -{" "}
+                          {formatShiftDays(assignment.shift.workDays)}
+                        </p>
+                      </div>
+                      <p className="text-sm text-white/55 sm:text-right">
+                        {formatAdminDate(assignment.effectiveFrom)}
+                        <span className="mx-2 text-white/20">-</span>
+                        {assignment.effectiveTo
+                          ? formatAdminDate(assignment.effectiveTo)
+                          : "Actual"}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-white/45">
+                  No hay asignaciones de turno registradas.
                 </p>
               )}
             </div>
@@ -883,6 +1194,75 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                 loadingLabel="Guardando..."
               >
                 Guardar salario
+              </Button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
+
+      {shiftAction ? (
+        <AdminModal
+          open
+          title={shiftAction === "assign" ? "Asignar turno" : "Cambiar turno"}
+          description={
+            shiftAction === "assign"
+              ? "Registra el primer horario del empleo activo."
+              : "Cierra el turno vigente y crea una nueva asignacion desde la fecha indicada."
+          }
+          onClose={closeShiftAction}
+        >
+          <form className="space-y-5" onSubmit={handleShiftSubmit}>
+            <label className="admin-form-label">
+              Turno activo
+              <select className="admin-form-control" name="shiftId" required>
+                <option value="">Selecciona un turno</option>
+                {selectableShifts.map((shift) => (
+                  <option key={shift.id} value={shift.id}>
+                    {shift.name} - {shiftTypeLabels[shift.type]} -{" "}
+                    {formatShiftSchedule(shift)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-form-label">
+              Fecha de vigencia
+              <input
+                className="admin-form-control"
+                name="effectiveFrom"
+                type="date"
+                min={minimumShiftDate}
+                defaultValue={minimumShiftDate}
+                required
+              />
+            </label>
+
+            {selectableShifts.length === 0 ? (
+              <p className="text-sm leading-6 text-white/50">
+                No hay turnos activos disponibles para asignar.
+              </p>
+            ) : null}
+
+            <p className="min-h-5 text-sm text-white/65" role="alert" aria-live="polite">
+              {shiftFormError}
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline-on-dark"
+                className="rounded-lg border-white/10"
+                disabled={isShiftSubmitting}
+                onClick={closeShiftAction}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary-on-dark"
+                className="rounded-lg"
+                disabled={selectableShifts.length === 0}
+                isLoading={isShiftSubmitting}
+                loadingLabel="Guardando..."
+              >
+                Guardar turno
               </Button>
             </div>
           </form>

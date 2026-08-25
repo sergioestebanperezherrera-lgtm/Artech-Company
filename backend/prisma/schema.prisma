@@ -68,6 +68,22 @@ enum PayFrequency {
   BIWEEKLY
 }
 
+enum ShiftType {
+  DAY
+  EVENING
+  NIGHT
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -160,6 +176,7 @@ model Employment {
   employee            Employee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   position            Position             @relation(fields: [positionId], references: [id], onDelete: Restrict)
   compensationPeriods CompensationPeriod[]
+  shiftAssignments    ShiftAssignment[]
 
   @@index([employeeId])
   @@index([positionId])
@@ -181,6 +198,52 @@ model CompensationPeriod {
   employment Employment @relation(fields: [employmentId], references: [id], onDelete: Restrict)
 
   @@index([employmentId])
+  @@index([employmentId, effectiveFrom])
+  @@index([employmentId, effectiveTo])
+}
+
+model Shift {
+  id        String    @id @default(cuid())
+  name      String
+  code      String    @unique
+  type      ShiftType
+  startTime DateTime  @db.Time(0)
+  endTime   DateTime  @db.Time(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  workDays    ShiftWorkDay[]
+  assignments ShiftAssignment[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model ShiftWorkDay {
+  shiftId String
+  day     Weekday
+
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@id([shiftId, day])
+  @@index([day])
+}
+
+model ShiftAssignment {
+  id            String    @id @default(cuid())
+  employmentId  String
+  shiftId       String
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employment Employment @relation(fields: [employmentId], references: [id], onDelete: Restrict)
+  shift      Shift      @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+
+  @@index([employmentId])
+  @@index([shiftId])
   @@index([employmentId, effectiveFrom])
   @@index([employmentId, effectiveTo])
 }

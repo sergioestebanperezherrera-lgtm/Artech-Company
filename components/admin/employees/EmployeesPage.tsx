@@ -227,7 +227,7 @@ export function EmployeesPage() {
           </div>
         ) : (
           <>
-            <div className="admin-table-wrap mt-4 hidden md:block">
+            <div className="admin-table-wrap mt-4 hidden xl:block">
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -274,7 +274,7 @@ export function EmployeesPage() {
               </table>
             </div>
 
-            <div className="mt-4 grid gap-3 md:hidden">
+            <div className="mt-4 grid gap-3 xl:hidden">
               {employees.map((employee) => (
                 <Link
                   key={employee.id}
