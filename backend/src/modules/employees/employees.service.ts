@@ -21,6 +21,28 @@ const transactionOptions = {
   isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
 } as const;
 
+async function runEmployeeTransaction<T>(
+  callback: (transaction: Prisma.TransactionClient) => Promise<T>,
+) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await prisma.$transaction(callback, transactionOptions);
+    } catch (error) {
+      const isWriteConflict =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034";
+
+      if (!isWriteConflict || attempt === maxAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw new AppError("The employee record changed during this operation. Try again.", 409);
+}
+
 function toDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -31,6 +53,39 @@ function toDateOnly(value: Date | null) {
 
 function previousDay(value: Date) {
   return new Date(value.getTime() - 24 * 60 * 60 * 1000);
+}
+
+async function closeOpenCompensationPeriod(
+  transaction: Prisma.TransactionClient,
+  employmentId: string,
+  endDate: Date,
+) {
+  const currentCompensation = await transaction.compensationPeriod.findFirst({
+    where: {
+      employmentId,
+      effectiveTo: null,
+    },
+    select: {
+      id: true,
+      effectiveFrom: true,
+    },
+  });
+
+  if (!currentCompensation) {
+    return;
+  }
+
+  if (endDate < currentCompensation.effectiveFrom) {
+    throw new AppError(
+      "Employment cannot end before the current compensation period starts.",
+      400,
+    );
+  }
+
+  await transaction.compensationPeriod.update({
+    where: { id: currentCompensation.id },
+    data: { effectiveTo: endDate },
+  });
 }
 
 function getDisplayName(
@@ -216,7 +271,7 @@ export async function createEmployee(
   input: CreateEmployeeInput,
 ): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
   try {
-    const employeeId = await prisma.$transaction(async (transaction) => {
+    const employeeId = await runEmployeeTransaction(async (transaction) => {
       await getActivePosition(transaction, input.positionId);
       const code = await nextEmployeeCode(transaction);
       const employee = await transaction.employee.create({
@@ -239,7 +294,7 @@ export async function createEmployee(
       });
 
       return employee.id;
-    }, transactionOptions);
+    });
 
     return {
       data: mapEmployeeDetail(await requireEmployeeDetail(employeeId)),
@@ -289,7 +344,7 @@ export async function changeEmployeePosition(
   input: ChangePositionInput,
 ): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
   try {
-    const employmentId = await prisma.$transaction(async (transaction) => {
+    const employmentId = await runEmployeeTransaction(async (transaction) => {
       await lockEmployee(transaction, id);
       const employee = await transaction.employee.findUniqueOrThrow({
         where: { id },
@@ -327,13 +382,20 @@ export async function changeEmployeePosition(
         );
       }
 
+      const previousEmploymentEndDate = previousDay(nextStartDate);
+
       await transaction.employment.update({
         where: { id: activeEmployment.id },
         data: {
           status: EmploymentStatus.ENDED,
-          endDate: previousDay(nextStartDate),
+          endDate: previousEmploymentEndDate,
         },
       });
+      await closeOpenCompensationPeriod(
+        transaction,
+        activeEmployment.id,
+        previousEmploymentEndDate,
+      );
       const employment = await transaction.employment.create({
         data: {
           employeeId: id,
@@ -346,7 +408,7 @@ export async function changeEmployeePosition(
       });
 
       return employment.id;
-    }, transactionOptions);
+    });
 
     return {
       data: mapEmployeeDetail(await requireEmployeeDetail(id)),
@@ -366,7 +428,7 @@ export async function terminateEmployee(
   input: TerminateEmployeeInput,
 ): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
   try {
-    const employmentId = await prisma.$transaction(async (transaction) => {
+    const employmentId = await runEmployeeTransaction(async (transaction) => {
       await lockEmployee(transaction, id);
       const employee = await transaction.employee.findUniqueOrThrow({
         where: { id },
@@ -407,13 +469,14 @@ export async function terminateEmployee(
           notes: input.notes ?? activeEmployment.notes,
         },
       });
+      await closeOpenCompensationPeriod(transaction, activeEmployment.id, endDate);
       await transaction.employee.update({
         where: { id },
         data: { isActive: false },
       });
 
       return activeEmployment.id;
-    }, transactionOptions);
+    });
 
     return {
       data: mapEmployeeDetail(await requireEmployeeDetail(id)),
@@ -433,7 +496,7 @@ export async function reactivateEmployee(
   input: ReactivateEmployeeInput,
 ): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
   try {
-    const employmentId = await prisma.$transaction(async (transaction) => {
+    const employmentId = await runEmployeeTransaction(async (transaction) => {
       await lockEmployee(transaction, id);
       const employee = await transaction.employee.findUniqueOrThrow({
         where: { id },
@@ -480,7 +543,7 @@ export async function reactivateEmployee(
       });
 
       return employment.id;
-    }, transactionOptions);
+    });
 
     return {
       data: mapEmployeeDetail(await requireEmployeeDetail(id)),

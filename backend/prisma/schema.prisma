@@ -59,6 +59,15 @@ enum EmploymentStatus {
   ENDED
 }
 
+enum Currency {
+  GTQ
+}
+
+enum PayFrequency {
+  MONTHLY
+  BIWEEKLY
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -148,13 +157,32 @@ model Employment {
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  position Position @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  employee            Employee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  position            Position             @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  compensationPeriods CompensationPeriod[]
 
   @@index([employeeId])
   @@index([positionId])
   @@index([status])
   @@index([employeeId, startDate])
+}
+
+model CompensationPeriod {
+  id            String       @id @default(cuid())
+  employmentId  String
+  amount        Decimal      @db.Decimal(12, 2)
+  currency      Currency     @default(GTQ)
+  payFrequency  PayFrequency
+  effectiveFrom DateTime     @db.Date
+  effectiveTo   DateTime?    @db.Date
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  employment Employment @relation(fields: [employmentId], references: [id], onDelete: Restrict)
+
+  @@index([employmentId])
+  @@index([employmentId, effectiveFrom])
+  @@index([employmentId, effectiveTo])
 }
 
 model Role {

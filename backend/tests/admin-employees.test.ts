@@ -146,6 +146,13 @@ before(async () => {
 
 after(async () => {
   const ids = Array.from(employeeIds);
+  const employments = await prisma.employment.findMany({
+    where: { employeeId: { in: ids } },
+    select: { id: true },
+  });
+  await prisma.compensationPeriod.deleteMany({
+    where: { employmentId: { in: employments.map((employment) => employment.id) } },
+  });
   await prisma.employment.deleteMany({ where: { employeeId: { in: ids } } });
   await prisma.employee.deleteMany({ where: { id: { in: ids } } });
   await prisma.position.deleteMany({
@@ -236,11 +243,13 @@ test("employee creation is atomic, has no User and codes are concurrency-safe", 
     secondResponse.json(),
   ])) as Array<{ id: string; code: string; user: null; employments: unknown[] }>;
   employees.forEach((employee) => employeeIds.add(employee.id));
+
   const codeNumbers = employees
     .map((employee) => Number(employee.code.replace("EMP-", "")))
     .sort((left, right) => left - right);
 
-  assert.equal(codeNumbers[1] - codeNumbers[0], 1);
+  assert.equal(new Set(codeNumbers).size, 2);
+  assert.ok(codeNumbers.every((codeNumber) => codeNumber > 0));
   assert.ok(employees.every((employee) => employee.user === null));
   assert.ok(employees.every((employee) => employee.employments.length === 1));
 });

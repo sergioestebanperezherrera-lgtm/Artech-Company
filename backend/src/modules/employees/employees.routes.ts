@@ -2,6 +2,10 @@ import { Router } from "express";
 import { asyncHandler } from "../../middlewares/async-handler";
 import { requirePermission } from "../auth/auth.middleware";
 import {
+  createCompensationPeriodController,
+  getEmployeeCompensationController,
+} from "./compensation.controller";
+import {
   changeEmployeePositionController,
   createEmployeeController,
   getEmployeeController,
@@ -22,6 +26,16 @@ router.post(
   "/",
   requirePermission("employee.create"),
   asyncHandler(createEmployeeController),
+);
+router.get(
+  "/:employeeId/compensation",
+  requirePermission("salary.read"),
+  asyncHandler(getEmployeeCompensationController),
+);
+router.post(
+  "/:employeeId/compensation",
+  requirePermission("salary.update"),
+  asyncHandler(createCompensationPeriodController),
 );
 router.get(
   "/:id",
