@@ -81,3 +81,11 @@ export type {
   InventoryMovementType,
   InventoryStockStatus,
 } from "./inventory";
+export type {
+  AdjustPayrollSlipInput,
+  CreatePayrollPeriodInput,
+  PayrollPeriodDetail,
+  PayrollPeriodStatus,
+  PayrollPeriodSummary,
+  PayrollSlip,
+} from "./payroll";

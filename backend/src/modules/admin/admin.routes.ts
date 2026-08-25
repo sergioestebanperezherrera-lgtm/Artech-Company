@@ -12,6 +12,7 @@ import attendanceRoutes from "../attendance/attendance.routes";
 import cashRoutes from "../cash/cash.routes";
 import posRoutes from "../pos/pos.routes";
 import inventoryRoutes from "../inventory/inventory.routes";
+import payrollRoutes from "../payroll/payroll.routes";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/cash", cashRoutes);
 router.use("/pos", posRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/inventory", inventoryRoutes);
+router.use("/payroll", payrollRoutes);
 
 export default router;
