@@ -1,5 +1,13 @@
 export type { Brand } from "./brand";
 export type {
+  AttendanceEmployee,
+  AttendanceFilters,
+  AttendanceRecord,
+  AttendanceStatus,
+  ClockAttendanceInput,
+  OverrideAttendanceInput,
+} from "./attendance";
+export type {
   AdminContext,
   AdminEmployee,
   AdminPermissionKey,

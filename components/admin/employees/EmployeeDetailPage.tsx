@@ -13,12 +13,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { AdminServiceError } from "@/lib/services/adminService";
+import { attendanceService } from "@/lib/services/attendanceService";
 import {
   employeeService,
   positionService,
   shiftService,
 } from "@/lib/services/employeeService";
 import type {
+  AttendanceRecord,
   CompensationPeriod,
   EmployeeCompensation,
   EmployeeDetail,
@@ -29,6 +31,13 @@ import type {
 } from "@/lib/types";
 import { AdminModal } from "../AdminModal";
 import { useAdminIdentity } from "../AdminContext";
+import {
+  attendanceStatusLabels,
+  attendanceStatusStyles,
+  formatAttendanceDateTime,
+  formatAttendanceWorkDate,
+  getLateLabel,
+} from "../attendance/attendanceUi";
 import {
   formatShiftDays,
   formatShiftSchedule,
@@ -146,15 +155,19 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
   const canUpdateSalary = identity.permissions.includes("salary.update");
   const canReadShift = identity.permissions.includes("shift.read");
   const canManageShift = identity.permissions.includes("shift.manage");
+  const canReadAttendance = identity.permissions.includes("attendance.read");
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [compensation, setCompensation] = useState<EmployeeCompensation | null>(null);
   const [employeeShifts, setEmployeeShifts] = useState<EmployeeShifts | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceRecord[] | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isCompensationLoading, setIsCompensationLoading] = useState(canReadSalary);
   const [isShiftLoading, setIsShiftLoading] = useState(canReadShift);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(canReadAttendance);
   const [compensationError, setCompensationError] = useState("");
   const [shiftError, setShiftError] = useState("");
+  const [attendanceError, setAttendanceError] = useState("");
   const [action, setAction] = useState<EmployeeAction>(null);
   const [compensationAction, setCompensationAction] =
     useState<CompensationAction>(null);
@@ -224,6 +237,37 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       }
     },
     [canReadShift, employeeId],
+  );
+
+  const loadAttendance = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!canReadAttendance) {
+        return null;
+      }
+
+      setIsAttendanceLoading(true);
+      setAttendanceError("");
+
+      try {
+        const result = await attendanceService.listByEmployee(employeeId, {}, signal);
+        setAttendance(result.slice(0, 5));
+        return result;
+      } catch (loadError: unknown) {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") {
+          return null;
+        }
+        setAttendanceError(
+          getAdminActionError(
+            loadError,
+            "No se pudo cargar la asistencia del empleado.",
+          ),
+        );
+        return null;
+      } finally {
+        setIsAttendanceLoading(false);
+      }
+    },
+    [canReadAttendance, employeeId],
   );
 
   useEffect(() => {
@@ -303,6 +347,18 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
 
     return () => controller.abort();
   }, [canReadShift, employeeId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (canReadAttendance) {
+      queueMicrotask(() => {
+        void loadAttendance(controller.signal);
+      });
+    }
+
+    return () => controller.abort();
+  }, [canReadAttendance, loadAttendance]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -932,6 +988,101 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
               )}
             </div>
           </>
+        )}
+      </section>
+
+      <section
+        className="admin-panel mt-4 p-5"
+        aria-labelledby="employee-attendance"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2
+              id="employee-attendance"
+              className="text-base font-medium text-white"
+            >
+              Asistencia
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
+              Registros recientes por fecha laboral y turno esperado historico.
+            </p>
+          </div>
+          {canReadAttendance ? (
+            <Link
+              href={`/admin/attendance?employeeId=${employee.id}`}
+              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/10 px-3 text-sm font-medium text-white/72 transition-colors hover:border-white/22 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Ver historial completo
+            </Link>
+          ) : null}
+        </div>
+
+        {!canReadAttendance ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white">
+              No tienes permiso para consultar asistencia.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              Los fichajes permanecen ocultos para tu cuenta.
+            </p>
+          </div>
+        ) : isAttendanceLoading && !attendance ? (
+          <div className="mt-5 grid gap-3" role="status">
+            <span className="sr-only">Cargando asistencia...</span>
+            <div className="admin-skeleton h-16 rounded-md" />
+            <div className="admin-skeleton h-16 rounded-md" />
+          </div>
+        ) : attendanceError ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white" role="alert">
+              {attendanceError}
+            </p>
+          </div>
+        ) : attendance?.length ? (
+          <div className="admin-module-list mt-5 divide-y divide-white/[0.07]">
+            {attendance.map((record) => (
+              <article
+                key={record.id}
+                className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-5"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-sm font-medium text-white">
+                      {formatAttendanceWorkDate(record.workDate)}
+                    </p>
+                    <span
+                      className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-medium ${attendanceStatusStyles[record.status]}`}
+                    >
+                      {attendanceStatusLabels[record.status]}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-white/50">
+                    {formatAttendanceDateTime(record.clockInAt)}
+                    <span className="mx-2 text-white/20">-</span>
+                    {formatAttendanceDateTime(record.clockOutAt)}
+                  </p>
+                  <p className="mt-1 text-xs text-white/35">
+                    {record.expectedShiftName ?? "Sin snapshot"} ·{" "}
+                    {getLateLabel(record.lateMinutes)}
+                  </p>
+                </div>
+                <p className="text-sm text-white/55 sm:text-right">
+                  {record.expectedStartTime && record.expectedEndTime
+                    ? `${record.expectedStartTime} - ${record.expectedEndTime}`
+                    : "Horario no registrado"}
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white">
+              Sin asistencia registrada.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              Este empleado aun no tiene fichajes visibles en el historial.
+            </p>
+          </div>
         )}
       </section>
 
