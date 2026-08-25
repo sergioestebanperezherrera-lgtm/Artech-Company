@@ -160,6 +160,7 @@ Estado: implementada.
 - Middlewares `requireAuth`, `requireAdminAccess` y `requirePermission`.
 - Endpoint `GET /api/admin/me` con respuestas `401`, `403` y `200`.
 - Script manual `npm run admin:grant -- <email>` para desarrollo; no crea usuarios ni credenciales.
+- Bootstrap productivo separado para el primer `SUPER_ADMIN`, limitado a Railway, con confirmaciones explicitas y cierre despues de la primera asignacion.
 
 No incluye UI `/admin`, CRUD de empleados, gestion de roles, POS, caja o nomina.
 

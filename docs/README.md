@@ -34,6 +34,7 @@ El schema contiene modelos preliminares para roles/permisos, empleados, inventar
 | [`UX_RULES.md`](./UX_RULES.md) | Reglas de interaccion, estados vacios, formularios, busqueda, filtros y gate de autenticacion |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Capas frontend/backend, datos, autenticacion, despliegue y responsabilidades |
 | [`API_CONTRACT.md`](./API_CONTRACT.md) | Endpoints REST existentes y contratos expuestos al frontend |
+| [`ADMIN_BOOTSTRAP.md`](./ADMIN_BOOTSTRAP.md) | Procedimiento controlado para asignar el primer `SUPER_ADMIN` en Railway |
 | [`ROADMAP.md`](./ROADMAP.md) | Historial implementado y modulos futuros claramente separados |
 
 ## Como Leer Esta Documentacion
