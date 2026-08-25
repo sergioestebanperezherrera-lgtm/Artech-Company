@@ -58,6 +58,7 @@ export type {
   EmploymentPosition,
   EmploymentStatus,
   EmploymentTransitionInput,
+  LinkEmployeeUserInput,
   PayFrequency,
   Position,
   Shift,

@@ -701,3 +701,103 @@ test("employee correction and deletion enforce RBAC", async () => {
   assert.equal(forbiddenCorrection.status, 403);
   assert.equal(forbiddenDelete.status, 403);
 });
+
+test("link-user binds one existing User to one active Employee", async () => {
+  const position = await createPosition(`Vinculo ${runId}`);
+  const employee = await createEmployee("Vinculo", position.id);
+  const target = await register("link-target");
+  const otherTarget = await register("link-other");
+  const linkPath = `/api/admin/employees/${employee.id}/link-user`;
+
+  const unauthenticated = await api(linkPath, {
+    method: "POST",
+    body: { email: target.email },
+  });
+  assert.equal(unauthenticated.status, 401);
+
+  const forbiddenReader = await api(linkPath, {
+    method: "POST",
+    cookie: readerCookie,
+    body: { email: target.email },
+  });
+  assert.equal(forbiddenReader.status, 403);
+
+  const noPermission = await register("link-no-permission");
+  const forbiddenNoPermission = await api(linkPath, {
+    method: "POST",
+    cookie: noPermission.cookie,
+    body: { email: target.email },
+  });
+  assert.equal(forbiddenNoPermission.status, 403);
+
+  const missingUser = await api(linkPath, {
+    method: "POST",
+    cookie: adminCookie,
+    body: { email: `missing-${runId}@example.test` },
+  });
+  assert.equal(missingUser.status, 404);
+
+  const linked = await api(linkPath, {
+    method: "POST",
+    cookie: adminCookie,
+    body: { email: `  ${target.email}  ` },
+  });
+  assert.equal(linked.status, 200);
+  const linkedBody = (await linked.json()) as {
+    hasSystemAccess: boolean;
+    user: { id: string; email: string } | null;
+  };
+  assert.equal(linkedBody.hasSystemAccess, true);
+  assert.ok(linkedBody.user);
+  assert.equal(linkedBody.user.id, target.userId);
+  assert.equal(linkedBody.user.email, target.email.toLowerCase());
+
+  const detail = await api(`/api/admin/employees/${employee.id}`, {
+    cookie: adminCookie,
+  });
+  assert.equal(detail.status, 200);
+  const detailBody = (await detail.json()) as {
+    hasSystemAccess: boolean;
+    user: { id: string } | null;
+  };
+  assert.equal(detailBody.hasSystemAccess, true);
+  assert.equal(detailBody.user?.id, target.userId);
+
+  const alreadyLinkedEmployee = await api(linkPath, {
+    method: "POST",
+    cookie: adminCookie,
+    body: { email: otherTarget.email },
+  });
+  assert.equal(alreadyLinkedEmployee.status, 409);
+
+  const secondEmployee = await createEmployee("VinculoDos", position.id);
+  const alreadyLinkedUser = await api(
+    `/api/admin/employees/${secondEmployee.id}/link-user`,
+    {
+      method: "POST",
+      cookie: adminCookie,
+      body: { email: target.email },
+    },
+  );
+  assert.equal(alreadyLinkedUser.status, 409);
+
+  const inactiveEmployee = await createEmployee("VinculoInactivo", position.id);
+  const terminated = await api(
+    `/api/admin/employees/${inactiveEmployee.id}/terminate`,
+    {
+      method: "POST",
+      cookie: adminCookie,
+      body: { endDate: "2026-02-01" },
+    },
+  );
+  assert.equal(terminated.status, 200);
+  const inactiveLink = await api(
+    `/api/admin/employees/${inactiveEmployee.id}/link-user`,
+    {
+      method: "POST",
+      cookie: adminCookie,
+      body: { email: otherTarget.email },
+    },
+  );
+  assert.equal(inactiveLink.status, 409);
+});

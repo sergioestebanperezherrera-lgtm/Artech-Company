@@ -12,6 +12,7 @@ import type {
   CorrectEmploymentStartDateInput,
   CreateEmployeeInput,
   EmployeeListQuery,
+  LinkUserInput,
   ReactivateEmployeeInput,
   TerminateEmployeeInput,
   UpdateEmployeeInput,
@@ -409,6 +410,72 @@ export async function updateEmployee(
       data: mapEmployeeDetail(await requireEmployeeDetail(id)),
       pendingEvent: {
         action: "employee.updated",
+        entity: "employee",
+        entityId: id,
+      },
+    };
+  } catch (error) {
+    rethrowEmployeeMutationError(error);
+  }
+}
+
+export async function linkEmployeeUser(
+  id: string,
+  input: LinkUserInput,
+): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
+  try {
+    await runEmployeeTransaction(async (transaction) => {
+      await lockEmployee(transaction, id);
+      const employee = await transaction.employee.findUniqueOrThrow({
+        where: { id },
+        select: {
+          isActive: true,
+          userId: true,
+        },
+      });
+
+      if (employee.userId) {
+        throw new AppError("Employee already has a linked user.", 409);
+      }
+
+      if (!employee.isActive) {
+        throw new AppError(
+          "Inactive employees cannot be linked to a user.",
+          409,
+        );
+      }
+
+      const user = await transaction.user.findUnique({
+        where: { email: input.email },
+        select: {
+          id: true,
+          employee: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new AppError("No user was found with that email.", 404);
+      }
+
+      if (user.employee) {
+        throw new AppError(
+          "The selected user is already linked to an employee.",
+          409,
+        );
+      }
+
+      await transaction.employee.update({
+        where: { id },
+        data: { userId: user.id },
+      });
+    });
+
+    return {
+      data: mapEmployeeDetail(await requireEmployeeDetail(id)),
+      pendingEvent: {
+        action: "employee.user_linked",
         entity: "employee",
         entityId: id,
       },

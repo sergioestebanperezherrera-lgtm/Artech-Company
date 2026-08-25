@@ -114,11 +114,16 @@ export const reactivateEmployeeSchema = z.object({
   notes: optionalNotesSchema.optional(),
 });
 
+export const linkUserSchema = z.object({
+  email: optionalEmailSchema,
+});
+
 export type CreatePositionInput = z.infer<typeof createPositionSchema>;
 export type UpdatePositionInput = z.infer<typeof updatePositionSchema>;
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
+export type LinkUserInput = z.infer<typeof linkUserSchema>;
 export type ChangePositionInput = z.infer<typeof changePositionSchema>;
 export type CorrectEmploymentStartDateInput = z.infer<
   typeof correctEmploymentStartDateSchema

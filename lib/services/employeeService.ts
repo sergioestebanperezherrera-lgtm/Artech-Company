@@ -12,6 +12,7 @@ import type {
   EmployeeShifts,
   EmployeeSummary,
   EmploymentTransitionInput,
+  LinkEmployeeUserInput,
   Position,
   Shift,
   TerminateEmployeeInput,
@@ -62,6 +63,12 @@ export const employeeService = {
     return adminRequest<EmployeeDetail>(
       `/api/admin/employees/${id}`,
       withJsonBody("PATCH", input),
+    );
+  },
+  linkUser(id: string, input: LinkEmployeeUserInput) {
+    return adminRequest<EmployeeDetail>(
+      `/api/admin/employees/${id}/link-user`,
+      withJsonBody("POST", input),
     );
   },
   changePosition(id: string, input: EmploymentTransitionInput) {

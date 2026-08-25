@@ -5,6 +5,7 @@ import {
   createEmployee,
   deleteEmployeeRecord,
   getEmployee,
+  linkEmployeeUser,
   listEmployees,
   reactivateEmployee,
   terminateEmployee,
@@ -16,6 +17,7 @@ import {
   createEmployeeSchema,
   employeeIdParamsSchema,
   employeeListQuerySchema,
+  linkUserSchema,
   parseRequest,
   reactivateEmployeeSchema,
   terminateEmployeeSchema,
@@ -54,6 +56,16 @@ export async function updateEmployeeController(
   const { id } = parseRequest(employeeIdParamsSchema, request.params);
   const input = parseRequest(updateEmployeeSchema, request.body);
   const result = await updateEmployee(id, input);
+  response.status(200).json(result.data);
+}
+
+export async function linkEmployeeUserController(
+  request: Request,
+  response: Response,
+) {
+  const { id } = parseRequest(employeeIdParamsSchema, request.params);
+  const input = parseRequest(linkUserSchema, request.body);
+  const result = await linkEmployeeUser(id, input);
   response.status(200).json(result.data);
 }
 

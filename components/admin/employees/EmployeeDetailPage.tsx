@@ -57,6 +57,7 @@ import {
 
 type EmployeeAction =
   | "edit"
+  | "linkUser"
   | "change"
   | "correctStartDate"
   | "terminate"
@@ -94,6 +95,11 @@ const actionCopy: Record<Exclude<EmployeeAction, null>, { title: string; descrip
   reactivate: {
     title: "Reactivar empleado",
     description: "Crea un nuevo periodo laboral sin alterar el historial anterior.",
+  },
+  linkUser: {
+    title: "Vincular cuenta",
+    description:
+      "Asocia una cuenta de usuario existente a este empleado por su email. No se crean credenciales ni se cambian roles o permisos.",
   },
 };
 
@@ -164,6 +170,27 @@ function getShiftError(error: unknown, fallback: string) {
 function validateAmountInput(value: string) {
   const trimmed = value.trim();
   return /^\d+(\.\d{1,2})?$/.test(trimmed) && Number(trimmed) > 0;
+}
+
+function getLinkUserError(error: unknown, fallback: string) {
+  if (!(error instanceof AdminServiceError)) {
+    return fallback;
+  }
+
+  if (error.status === 400) {
+    return "Ingresa un email valido.";
+  }
+  if (error.status === 403) {
+    return "No tienes permiso para vincular cuentas.";
+  }
+  if (error.status === 404) {
+    return "No existe una cuenta de usuario con ese email.";
+  }
+  if (error.status === 409) {
+    return "El empleado o la cuenta ya tiene un vinculo. Revisa ambos registros.";
+  }
+
+  return fallback;
 }
 
 export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
@@ -446,7 +473,10 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           phone: phone || null,
         });
         setStatusMessage("Los datos del empleado fueron actualizados.");
-      } else if (action === "correctStartDate") {
+      } else if (action === "linkUser") {
+        const email = String(formData.get("linkEmail") ?? "").trim();
+        updated = await employeeService.linkUser(employee.id, { email });
+        setStatusMessage("La cuenta fue vinculada al empleado.");      } else if (action === "correctStartDate") {
         updated = await employeeService.correctStartDate(employee.id, {
           startDate: String(formData.get("startDate") ?? ""),
         });
@@ -498,10 +528,15 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       setAction(null);
     } catch (actionError) {
       setError(
-        getAdminActionError(
-          actionError,
-          "No pudimos completar la operacion. Intenta nuevamente.",
-        ),
+        action === "linkUser"
+          ? getLinkUserError(
+              actionError,
+              "No pudimos vincular la cuenta. Intenta nuevamente.",
+            )
+          : getAdminActionError(
+              actionError,
+              "No pudimos completar la operacion. Intenta nuevamente.",
+            ),
       );
     } finally {
       setIsSubmitting(false);
@@ -777,17 +812,31 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
         </section>
 
         <section className="admin-panel p-5" aria-labelledby="employee-access">
-          <h2 id="employee-access" className="text-base font-medium text-white">
-            Acceso al sistema
-          </h2>
-          <p className="mt-4 text-sm font-medium text-white/75">
-            {employee.hasSystemAccess ? "Cuenta vinculada" : "Sin cuenta vinculada"}
-          </p>
-          <p className="mt-2 break-words text-sm leading-6 text-white/45">
-            {employee.user
-              ? `${employee.user.email} - ${employee.user.isActive ? "activa" : "inactiva"}`
-              : "El registro laboral no crea credenciales automaticamente."}
-          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 id="employee-access" className="text-base font-medium text-white">
+                Acceso al sistema
+              </h2>
+              <p className="mt-4 text-sm font-medium text-white/75">
+                {employee.hasSystemAccess ? "Cuenta vinculada" : "Sin cuenta vinculada"}
+              </p>
+              <p className="mt-2 break-words text-sm leading-6 text-white/45">
+                {employee.user
+                  ? `${employee.user.email} - ${employee.user.isActive ? "activa" : "inactiva"}`
+                  : "El registro laboral no crea credenciales automaticamente."}
+              </p>
+            </div>
+            {!employee.hasSystemAccess && canUpdate && employee.isActive ? (
+              <Button
+                variant="outline-on-dark"
+                className="min-h-10 shrink-0 rounded-lg border-white/10 px-3"
+                onClick={() => setAction("linkUser")}
+              >
+                <UserCheck aria-hidden="true" size={15} />
+                Vincular cuenta
+              </Button>
+            ) : null}
+          </div>
         </section>
       </div>
 
@@ -1257,6 +1306,25 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                   />
                 </label>
               </div>
+            ) : action === "linkUser" ? (
+              <>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/50">
+                  Se buscara una cuenta existente por email y se asociara a este
+                  empleado activo. No se crean contrasenas ni se otorgan roles o
+                  permisos.
+                </div>
+                <label className="admin-form-label">
+                  Email de la cuenta
+                  <input
+                    className="admin-form-control"
+                    name="linkEmail"
+                    type="email"
+                    defaultValue={employee.email ?? ""}
+                    maxLength={254}
+                    required
+                  />
+                </label>
+              </>
             ) : action === "correctStartDate" ? (
               <>
                 <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/50">

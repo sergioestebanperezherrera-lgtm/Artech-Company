@@ -180,6 +180,10 @@ export type UpdateEmployeeInput = {
   phone?: string | null;
 };
 
+export type LinkEmployeeUserInput = {
+  email: string;
+};
+
 export type EmploymentTransitionInput = {
   positionId: string;
   startDate: string;

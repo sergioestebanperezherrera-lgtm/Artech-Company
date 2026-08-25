@@ -16,6 +16,7 @@ import {
   createEmployeeController,
   deleteEmployeeRecordController,
   getEmployeeController,
+  linkEmployeeUserController,
   listEmployeesController,
   reactivateEmployeeController,
   terminateEmployeeController,
@@ -68,6 +69,11 @@ router.patch(
   "/:id",
   requirePermission("employee.update"),
   asyncHandler(updateEmployeeController),
+);
+router.post(
+  "/:id/link-user",
+  requirePermission("employee.update"),
+  asyncHandler(linkEmployeeUserController),
 );
 router.post(
   "/:id/change-position",
