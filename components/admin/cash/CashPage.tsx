@@ -119,18 +119,39 @@ export function CashPage() {
     setError("");
 
     try {
-      const [nextRegisters, nextSession] = await Promise.all([
-        cashService.listRegisters(signal),
-        cashService.getCurrentSession(signal),
-      ]);
+      const nextRegisters = await cashService.listRegisters(signal);
       setRegisters(nextRegisters);
-      setCurrentSession(nextSession);
       setSelectedRegisterId((current) => current || nextRegisters[0]?.id || "");
+
+      try {
+        setCurrentSession(await cashService.getCurrentSession(signal));
+      } catch (sessionError: unknown) {
+        if (
+          sessionError instanceof DOMException &&
+          sessionError.name === "AbortError"
+        ) {
+          return;
+        }
+        setCurrentSession(null);
+        setStatusMessage(
+          `Sesion actual: ${getAdminCommerceError(
+            sessionError,
+            "No se pudo cargar la sesion de caja actual.",
+          )}`,
+        );
+      }
     } catch (loadError: unknown) {
       if (loadError instanceof DOMException && loadError.name === "AbortError") {
         return;
       }
-      setError(getAdminCommerceError(loadError, "No se pudo cargar caja."));
+      setRegisters([]);
+      setCurrentSession(null);
+      setError(
+        `Cajas: ${getAdminCommerceError(
+          loadError,
+          "No se pudieron cargar las cajas.",
+        )}`,
+      );
     } finally {
       setIsLoading(false);
     }

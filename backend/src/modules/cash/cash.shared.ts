@@ -77,6 +77,38 @@ export async function resolveActiveOperator(
   return { employee, employment };
 }
 
+export async function findActiveOperator(
+  transaction: Prisma.TransactionClient,
+  userId: string,
+) {
+  const employee = await transaction.employee.findUnique({
+    where: { userId },
+    select: {
+      id: true,
+      code: true,
+      isActive: true,
+      employments: {
+        where: { status: EmploymentStatus.ACTIVE },
+        orderBy: { startDate: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+        },
+      },
+    },
+  });
+  const employment = employee?.employments[0];
+
+  if (!employee?.isActive || !employment) {
+    return null;
+  }
+
+  return { employee, employment };
+}
+
 export async function lockCashRegister(
   transaction: Prisma.TransactionClient,
   cashRegisterId: string,

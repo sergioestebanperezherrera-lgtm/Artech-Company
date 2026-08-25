@@ -7,6 +7,7 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../errors/app-error";
 import {
   decimalToNumber,
+  findActiveOperator,
   lockCashRegister,
   lockCashSession,
   resolveActiveOperator,
@@ -197,7 +198,12 @@ export async function openCashSession(
 
 export async function getCurrentCashSession(userId: string) {
   const sessionId = await prisma.$transaction(async (transaction) => {
-    const operator = await resolveActiveOperator(transaction, userId);
+    const operator = await findActiveOperator(transaction, userId);
+
+    if (!operator) {
+      return null;
+    }
+
     const session = await transaction.cashSession.findFirst({
       where: {
         employmentId: operator.employment.id,

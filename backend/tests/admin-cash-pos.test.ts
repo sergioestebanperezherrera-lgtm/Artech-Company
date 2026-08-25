@@ -18,11 +18,14 @@ const testEmails = new Set<string>();
 const employeeIds = new Set<string>();
 const cashRegisterIds = new Set<string>();
 const productIds = new Set<string>();
+const roleIds = new Set<string>();
 let apiServer: Server;
 let apiBaseUrl: string;
 let adminCookie: string;
 let cashierCookie: string;
 let noPermissionCookie: string;
+let superAdminNoEmployeeCookie: string;
+let cashReadOnlyCookie: string;
 let adminEmployeeId: string;
 let positionId: string;
 let categoryId: string;
@@ -112,6 +115,27 @@ async function grantCashier(userId: string) {
   await prisma.userRole.create({ data: { userId, roleId: role.id } });
 }
 
+async function grantSinglePermissionRole(userId: string, permissionKey: string) {
+  const permission = await prisma.permission.findUniqueOrThrow({
+    where: { key: permissionKey },
+    select: { id: true },
+  });
+  const role = await prisma.role.create({
+    data: {
+      name: `CASH_READ_QA_${runId}`,
+      description: "Role temporal para pruebas de caja read-only.",
+      permissions: {
+        create: {
+          permissionId: permission.id,
+        },
+      },
+    },
+    select: { id: true },
+  });
+  roleIds.add(role.id);
+  await prisma.userRole.create({ data: { userId, roleId: role.id } });
+}
+
 async function createRegister(label: string, cookie = adminCookie) {
   const response = await api("/api/admin/cash/registers", {
     method: "POST",
@@ -198,6 +222,14 @@ before(async () => {
   const noPermission = await register("customer");
   noPermissionCookie = noPermission.cookie;
 
+  const superAdminNoEmployee = await register("super-no-employee");
+  await grantSuperAdminByEmail(prisma, superAdminNoEmployee.email);
+  superAdminNoEmployeeCookie = superAdminNoEmployee.cookie;
+
+  const cashReadOnly = await register("cash-read");
+  await grantSinglePermissionRole(cashReadOnly.userId, "cash.read");
+  cashReadOnlyCookie = cashReadOnly.cookie;
+
   cashProductId = await createProduct("CASH", "100.00", 20);
   cardProductId = await createProduct("CARD", "75.50", 10);
   scarceProductId = await createProduct("SCARCE", "50.00", 1);
@@ -235,6 +267,8 @@ after(async () => {
   await prisma.employee.deleteMany({ where: { id: { in: Array.from(employeeIds) } } });
   await prisma.position.delete({ where: { id: positionId } });
   await prisma.user.deleteMany({ where: { email: { in: Array.from(testEmails) } } });
+  await prisma.rolePermission.deleteMany({ where: { roleId: { in: Array.from(roleIds) } } });
+  await prisma.role.deleteMany({ where: { id: { in: Array.from(roleIds) } } });
   await stopServer(apiServer);
   await prisma.$disconnect();
 });
@@ -253,6 +287,51 @@ test("cash and POS endpoints enforce authentication and RBAC", async () => {
   assert.equal(unauthenticated.status, 401);
   assert.equal(forbiddenCash.status, 403);
   assert.equal(forbiddenPos.status, 403);
+});
+
+test("cash read endpoints return 200 for SUPER_ADMIN without an active employee", async () => {
+  const registers = await api("/api/admin/cash/registers", {
+    cookie: superAdminNoEmployeeCookie,
+  });
+  const current = await api("/api/admin/cash/sessions/current", {
+    cookie: superAdminNoEmployeeCookie,
+  });
+  const create = await api("/api/admin/cash/registers", {
+    method: "POST",
+    cookie: superAdminNoEmployeeCookie,
+    body: {
+      code: `REG-${runId.slice(0, 6)}-NOEMP`,
+      name: "Caja sin empleado",
+    },
+  });
+
+  assert.equal(registers.status, 200);
+  assert.equal(current.status, 200);
+  assert.equal(await current.json(), null);
+  assert.equal(create.status, 201);
+  cashRegisterIds.add(((await create.json()) as { id: string }).id);
+});
+
+test("cash.read alone can read registers and current session but cannot mutate", async () => {
+  const registers = await api("/api/admin/cash/registers", {
+    cookie: cashReadOnlyCookie,
+  });
+  const current = await api("/api/admin/cash/sessions/current", {
+    cookie: cashReadOnlyCookie,
+  });
+  const create = await api("/api/admin/cash/registers", {
+    method: "POST",
+    cookie: cashReadOnlyCookie,
+    body: {
+      code: `REG-${runId.slice(0, 6)}-READ`,
+      name: "Caja read-only",
+    },
+  });
+
+  assert.equal(registers.status, 200);
+  assert.equal(current.status, 200);
+  assert.equal(await current.json(), null);
+  assert.equal(create.status, 403);
 });
 
 test("cash registers reject duplicate codes and inactive opening", async () => {
