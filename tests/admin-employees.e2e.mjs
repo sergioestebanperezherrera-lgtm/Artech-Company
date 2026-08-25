@@ -13,6 +13,8 @@ const employeePermissions = [
   "employee.create",
   "employee.update",
   "employee.deactivate",
+  "salary.read",
+  "salary.update",
 ];
 
 function assert(condition, message) {
@@ -116,6 +118,31 @@ function employmentPayload(employee, position, startDate, notes = null) {
   };
 }
 
+function compensationPayload(employment, input) {
+  const timestamp = new Date().toISOString();
+  return {
+    id: `compensation-${employment.id}-${employment.compensationPeriods.length + 1}`,
+    employmentId: employment.id,
+    amount: Number(Number(input.amount).toFixed(2)),
+    currency: input.currency,
+    payFrequency: input.payFrequency,
+    effectiveFrom: input.effectiveFrom,
+    effectiveTo: null,
+    employment: {
+      id: employment.id,
+      status: employment.status,
+      startDate: employment.startDate,
+      endDate: employment.endDate,
+      position: {
+        id: employment.position.id,
+        name: employment.position.name,
+      },
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
 function employeeDetail(state, input) {
   const timestamp = new Date().toISOString();
   const employee = {
@@ -137,6 +164,7 @@ function employeeDetail(state, input) {
   };
   const position = state.positions.find((item) => item.id === input.positionId);
   const employment = employmentPayload(employee, position, input.startDate);
+  employment.compensationPeriods = [];
   employee.currentEmployment = employment;
   employee.employments = [employment];
   return employee;
@@ -169,6 +197,53 @@ function previousDay(value) {
   const date = new Date(`${value}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() - 1);
   return date.toISOString().slice(0, 10);
+}
+
+function closeOpenCompensation(employment, endDate) {
+  const open = employment?.compensationPeriods?.find((period) => period.effectiveTo === null);
+  if (open) {
+    open.effectiveTo = endDate;
+    open.employment.endDate = endDate;
+    open.employment.status = "ENDED";
+  }
+}
+
+function compensationResponse(employee) {
+  const activeEmployment = employee.employments.find(
+    (employment) => employment.status === "ACTIVE",
+  );
+  const history = employee.employments
+    .flatMap((employment) => employment.compensationPeriods ?? [])
+    .sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
+  const current =
+    activeEmployment?.compensationPeriods?.find((period) => period.effectiveTo === null) ??
+    null;
+
+  return {
+    employee: {
+      id: employee.id,
+      code: employee.code,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      phone: employee.phone,
+      isActive: employee.isActive,
+    },
+    currentEmployment: activeEmployment
+      ? {
+          id: activeEmployment.id,
+          startDate: activeEmployment.startDate,
+          endDate: activeEmployment.endDate,
+          status: activeEmployment.status,
+          position: {
+            id: activeEmployment.position.id,
+            name: activeEmployment.position.name,
+          },
+        }
+      : null,
+    current,
+    history,
+  };
 }
 
 async function fulfillJson(route, status, body) {
@@ -250,7 +325,40 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         return;
       }
 
-      const input = request.postDataJSON();
+      if (match[2] === "compensation" && method === "GET") {
+        await fulfillJson(route, 200, compensationResponse(employee));
+        return;
+      }
+
+      const input = method === "GET" ? undefined : request.postDataJSON();
+
+      if (match[2] === "compensation" && method === "POST") {
+        if (!employee.isActive || !employee.currentEmployment) {
+          await fulfillJson(route, 409, {
+            message: "Employee has no active employment for compensation changes.",
+          });
+          return;
+        }
+        const activeEmployment = employee.currentEmployment;
+        const current = activeEmployment.compensationPeriods.find(
+          (period) => period.effectiveTo === null,
+        );
+        if (current && input.effectiveFrom <= current.effectiveFrom) {
+          await fulfillJson(route, 409, {
+            message: "New compensation must start after the current compensation start date.",
+          });
+          return;
+        }
+        if (current) {
+          current.effectiveTo = previousDay(input.effectiveFrom);
+        }
+        activeEmployment.compensationPeriods.unshift(
+          compensationPayload(activeEmployment, input),
+        );
+        await fulfillJson(route, 201, compensationResponse(employee));
+        return;
+      }
+
       if (!match[2] && method === "PATCH") {
         Object.assign(employee, input, {
           name: `${input.firstName ?? employee.firstName} ${input.lastName ?? employee.lastName}`,
@@ -261,9 +369,12 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
 
       if (match[2] === "change-position" && method === "POST") {
         employee.currentEmployment.status = "ENDED";
-        employee.currentEmployment.endDate = previousDay(input.startDate);
+        const previousEndDate = previousDay(input.startDate);
+        employee.currentEmployment.endDate = previousEndDate;
+        closeOpenCompensation(employee.currentEmployment, previousEndDate);
         const position = state.positions.find((item) => item.id === input.positionId);
         const nextEmployment = employmentPayload(employee, position, input.startDate, input.notes);
+        nextEmployment.compensationPeriods = [];
         employee.employments.unshift(nextEmployment);
         employee.currentEmployment = nextEmployment;
         await fulfillJson(route, 200, employee);
@@ -274,6 +385,7 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         employee.currentEmployment.status = "ENDED";
         employee.currentEmployment.endDate = input.endDate;
         employee.currentEmployment.notes = input.notes ?? employee.currentEmployment.notes;
+        closeOpenCompensation(employee.currentEmployment, input.endDate);
         employee.currentEmployment = null;
         employee.isActive = false;
         employee.status = "INACTIVE";
@@ -284,6 +396,7 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
       if (match[2] === "reactivate" && method === "POST") {
         const position = state.positions.find((item) => item.id === input.positionId);
         const nextEmployment = employmentPayload(employee, position, input.startDate, input.notes);
+        nextEmployment.compensationPeriods = [];
         employee.employments.unshift(nextEmployment);
         employee.currentEmployment = nextEmployment;
         employee.isActive = true;
@@ -350,6 +463,24 @@ try {
     await page.getByRole("link", { name: "Ada Lovelace", exact: true }).click();
     await page.getByRole("heading", { name: "Ada Lovelace" }).waitFor();
     await page.getByText("Sin cuenta vinculada").waitFor();
+    await page.getByText("Sin salario asignado").waitFor();
+
+    await page.getByRole("button", { name: "Asignar salario" }).click();
+    await page.getByLabel("Monto").fill("4000");
+    await page.getByLabel("Frecuencia").selectOption("MONTHLY");
+    await page.getByLabel("Fecha de vigencia").fill("2026-01-10");
+    await page.getByRole("button", { name: "Guardar salario" }).click();
+    await page.getByText("El salario fue asignado correctamente.").waitFor();
+    await page.getByText("Q4,000.00").first().waitFor();
+
+    await page.getByRole("button", { name: "Cambiar salario" }).click();
+    await page.getByLabel("Monto").fill("4500.50");
+    await page.getByLabel("Frecuencia").selectOption("BIWEEKLY");
+    await page.getByLabel("Fecha de vigencia").fill("2026-02-01");
+    await page.getByRole("button", { name: "Guardar salario" }).click();
+    await page.getByText("El cambio salarial fue registrado.").waitFor();
+    await page.getByText("Q4,500.50").first().waitFor();
+    await page.getByText("Q4,000.00").first().waitFor();
 
     await page.getByRole("button", { name: "Editar", exact: true }).click();
     await page.getByLabel("Telefono", { exact: true }).fill("+502 5555 0202");
@@ -362,6 +493,7 @@ try {
     await page.getByLabel("Fecha de inicio").fill("2026-02-01");
     await page.getByRole("button", { name: "Confirmar" }).click();
     await page.getByText("El cambio de puesto quedo registrado.").waitFor();
+    await page.getByText("Sin salario asignado").waitFor();
 
     await page.getByRole("button", { name: "Finalizar relacion" }).click();
     await page.getByLabel("Ultimo dia laboral").fill("2026-03-01");
@@ -389,12 +521,73 @@ try {
     await mockAdminApi(page, state, ["employee.read"]);
     await page.goto(`${baseUrl}/admin/employees/${state.employees[0].id}`);
     await page.getByRole("heading", { name: "Ada Lovelace" }).waitFor();
+    await page
+      .getByText("No tienes permiso para consultar informacion salarial.")
+      .waitFor();
     for (const action of ["Editar", "Cambiar puesto", "Finalizar relacion", "Reactivar"]) {
       assert(
         (await page.getByRole("button", { name: action, exact: true }).count()) === 0,
         `${action} no debe mostrarse con employee.read solamente.`,
       );
     }
+    assert(
+      (await page.getByText("Q4,500.50").count()) === 0,
+      "No debe revelar salario sin salary.read.",
+    );
+    await context.close();
+  });
+
+  await runTest("salary.read ve historial sin acciones de escritura", async () => {
+    const { context, page } = await createPage(browser);
+    await mockAdminApi(page, state, ["employee.read", "salary.read"]);
+    await page.goto(`${baseUrl}/admin/employees/${state.employees[0].id}`);
+    await page.getByRole("heading", { name: "Ada Lovelace" }).waitFor();
+    await page.getByText("Historial de compensacion").waitFor();
+    await page.getByText("Q4,500.50").first().waitFor();
+    await page.getByText("Q4,000.00").first().waitFor();
+    assert(
+      (await page.getByRole("button", { name: /Asignar salario|Cambiar salario/ }).count()) === 0,
+      "salary.read no debe mostrar acciones de compensacion.",
+    );
+    await context.close();
+  });
+
+  await runTest("empleado inactivo mantiene historial visible sin cambio salarial", async () => {
+    const inactiveState = makeState();
+    inactiveState.positions.push(...state.positions);
+    const employee = employeeDetail(inactiveState, {
+      firstName: "Alan",
+      lastName: "Turing",
+      email: "alan@artech.test",
+      positionId: inactiveState.positions[0].id,
+      startDate: "2026-01-01",
+    });
+    const employment = employee.currentEmployment;
+    employment.compensationPeriods.push(
+      compensationPayload(employment, {
+        amount: "5200",
+        currency: "GTQ",
+        payFrequency: "MONTHLY",
+        effectiveFrom: "2026-01-01",
+      }),
+    );
+    closeOpenCompensation(employment, "2026-03-31");
+    employment.status = "ENDED";
+    employment.endDate = "2026-03-31";
+    employee.currentEmployment = null;
+    employee.isActive = false;
+    employee.status = "INACTIVE";
+    inactiveState.employees.push(employee);
+
+    const { context, page } = await createPage(browser);
+    await mockAdminApi(page, inactiveState, ["employee.read", "salary.read", "salary.update"]);
+    await page.goto(`${baseUrl}/admin/employees/${employee.id}`);
+    await page.getByRole("heading", { name: "Alan Turing" }).waitFor();
+    await page.getByText("Q5,200.00").waitFor();
+    assert(
+      (await page.getByRole("button", { name: /Asignar salario|Cambiar salario/ }).count()) === 0,
+      "Un empleado inactivo no debe permitir modificar salario.",
+    );
     await context.close();
   });
 

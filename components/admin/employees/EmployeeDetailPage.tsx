@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   BriefcaseBusiness,
+  DollarSign,
   Pencil,
   UserCheck,
   UserMinus,
 } from "lucide-react";
 import { Button } from "@/components/ui";
+import { AdminServiceError } from "@/lib/services/adminService";
 import { employeeService, positionService } from "@/lib/services/employeeService";
-import type { EmployeeDetail, Position } from "@/lib/types";
+import type {
+  CompensationPeriod,
+  EmployeeCompensation,
+  EmployeeDetail,
+  PayFrequency,
+  Position,
+} from "@/lib/types";
 import { AdminModal } from "../AdminModal";
 import { useAdminIdentity } from "../AdminContext";
 import { EmployeeStatusBadge } from "./EmployeeStatusBadge";
@@ -23,6 +31,7 @@ import {
 } from "./employeeUi";
 
 type EmployeeAction = "edit" | "change" | "terminate" | "reactivate" | null;
+type CompensationAction = "assign" | "change" | null;
 
 type EmployeeDetailPageProps = {
   employeeId: string;
@@ -47,16 +56,101 @@ const actionCopy: Record<Exclude<EmployeeAction, null>, { title: string; descrip
   },
 };
 
+const payFrequencyLabels: Record<PayFrequency, string> = {
+  MONTHLY: "Mensual",
+  BIWEEKLY: "Quincenal",
+};
+
+function formatCompensationAmount(period: Pick<CompensationPeriod, "amount" | "currency">) {
+  if (period.currency !== "GTQ") {
+    return `${period.currency} ${period.amount.toFixed(2)}`;
+  }
+
+  return `Q${period.amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getCompensationError(error: unknown, fallback: string) {
+  if (!(error instanceof AdminServiceError)) {
+    return fallback;
+  }
+
+  if (error.status === 400) {
+    return "Revisa el monto y la fecha de vigencia.";
+  }
+  if (error.status === 401) {
+    return "Tu sesion expiro. Inicia sesion nuevamente.";
+  }
+  if (error.status === 403) {
+    return "No tienes permiso para modificar la compensacion.";
+  }
+  if (error.status === 404) {
+    return "El empleado ya no esta disponible.";
+  }
+  if (error.status === 409) {
+    return "La fecha seleccionada entra en conflicto con el periodo salarial actual.";
+  }
+
+  return fallback;
+}
+
+function validateAmountInput(value: string) {
+  const trimmed = value.trim();
+  return /^\d+(\.\d{1,2})?$/.test(trimmed) && Number(trimmed) > 0;
+}
+
 export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
   const identity = useAdminIdentity();
   const canUpdate = identity.permissions.includes("employee.update");
   const canDeactivate = identity.permissions.includes("employee.deactivate");
+  const canReadSalary = identity.permissions.includes("salary.read");
+  const canUpdateSalary = identity.permissions.includes("salary.update");
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [compensation, setCompensation] = useState<EmployeeCompensation | null>(null);
+  const [isCompensationLoading, setIsCompensationLoading] = useState(canReadSalary);
+  const [compensationError, setCompensationError] = useState("");
   const [action, setAction] = useState<EmployeeAction>(null);
+  const [compensationAction, setCompensationAction] =
+    useState<CompensationAction>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompensationSubmitting, setIsCompensationSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [compensationFormError, setCompensationFormError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+
+  const loadCompensation = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!canReadSalary) {
+        return null;
+      }
+
+      setIsCompensationLoading(true);
+      setCompensationError("");
+
+      try {
+        const result = await employeeService.getCompensation(employeeId, signal);
+        setCompensation(result);
+        return result;
+      } catch (loadError: unknown) {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") {
+          return null;
+        }
+        setCompensationError(
+          getCompensationError(
+            loadError,
+            "No se pudo cargar la compensacion del empleado.",
+          ),
+        );
+        return null;
+      } finally {
+        setIsCompensationLoading(false);
+      }
+    },
+    [canReadSalary, employeeId],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,10 +175,46 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
     return () => controller.abort();
   }, [employeeId]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (canReadSalary) {
+      void employeeService
+        .getCompensation(employeeId, controller.signal)
+        .then((result) => {
+          setCompensation(result);
+          setCompensationError("");
+        })
+        .catch((loadError: unknown) => {
+          if (loadError instanceof DOMException && loadError.name === "AbortError") {
+            return;
+          }
+          setCompensationError(
+            getCompensationError(
+              loadError,
+              "No se pudo cargar la compensacion del empleado.",
+            ),
+          );
+        })
+        .finally(() => {
+          setIsCompensationLoading(false);
+        });
+    }
+
+    return () => controller.abort();
+  }, [canReadSalary, employeeId]);
+
   const closeAction = () => {
     if (!isSubmitting) {
       setAction(null);
       setError("");
+    }
+  };
+
+  const closeCompensationAction = () => {
+    if (!isCompensationSubmitting) {
+      setCompensationAction(null);
+      setCompensationFormError("");
     }
   };
 
@@ -139,6 +269,9 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       }
 
       setEmployee(updated);
+      if (canReadSalary) {
+        void loadCompensation();
+      }
       setAction(null);
     } catch (actionError) {
       setError(
@@ -149,6 +282,55 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCompensationSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!employee || !compensationAction || isCompensationSubmitting) {
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const amount = String(formData.get("amount") ?? "").trim();
+    const payFrequency = String(formData.get("payFrequency") ?? "") as PayFrequency;
+    const effectiveFrom = String(formData.get("effectiveFrom") ?? "");
+
+    if (!validateAmountInput(amount)) {
+      setCompensationFormError("Ingresa un monto mayor a cero con maximo 2 decimales.");
+      return;
+    }
+
+    setIsCompensationSubmitting(true);
+    setCompensationFormError("");
+    setStatusMessage("");
+
+    try {
+      const updated = await employeeService.createCompensation(employee.id, {
+        amount,
+        currency: "GTQ",
+        payFrequency,
+        effectiveFrom,
+      });
+      setCompensation(updated);
+      setCompensationAction(null);
+      setStatusMessage(
+        compensationAction === "assign"
+          ? "El salario fue asignado correctamente."
+          : "El cambio salarial fue registrado.",
+      );
+    } catch (submitError) {
+      setCompensationFormError(
+        getCompensationError(
+          submitError,
+          "No pudimos guardar la compensacion. Intenta nuevamente.",
+        ),
+      );
+    } finally {
+      setIsCompensationSubmitting(false);
     }
   };
 
@@ -189,6 +371,12 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
   const minimumReactivationDate = latestEmployment?.endDate
     ? addDays(latestEmployment.endDate, 1)
     : getTodayDate();
+  const currentCompensation = compensation?.current ?? null;
+  const canMutateCompensation =
+    canUpdateSalary && employee.isActive && Boolean(employee.currentEmployment);
+  const minimumCompensationDate = currentCompensation
+    ? addDays(currentCompensation.effectiveFrom, 1)
+    : employee.currentEmployment?.startDate ?? getTodayDate();
 
   return (
     <div>
@@ -308,6 +496,133 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           </p>
         </section>
       </div>
+
+      <section className="admin-panel mt-4 p-5" aria-labelledby="employee-compensation">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 id="employee-compensation" className="text-base font-medium text-white">
+              Compensacion
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
+              Condicion salarial vigente e historial asociado al empleo.
+            </p>
+          </div>
+          {canReadSalary && canMutateCompensation ? (
+            <Button
+              variant={currentCompensation ? "outline-on-dark" : "primary-on-dark"}
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              disabled={isCompensationLoading}
+              onClick={() => setCompensationAction(currentCompensation ? "change" : "assign")}
+            >
+              <DollarSign aria-hidden="true" size={15} />
+              {currentCompensation ? "Cambiar salario" : "Asignar salario"}
+            </Button>
+          ) : null}
+        </div>
+
+        {!canReadSalary ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white">
+              No tienes permiso para consultar informacion salarial.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              La compensacion y su historial permanecen ocultos para tu cuenta.
+            </p>
+          </div>
+        ) : isCompensationLoading && !compensation ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-4" role="status">
+            <span className="sr-only">Cargando compensacion...</span>
+            <div className="admin-skeleton h-20 rounded-md sm:col-span-2" />
+            <div className="admin-skeleton h-20 rounded-md" />
+            <div className="admin-skeleton h-20 rounded-md" />
+          </div>
+        ) : compensationError ? (
+          <div className="admin-empty-panel mt-5 px-5 py-6">
+            <p className="text-sm font-medium text-white" role="alert">
+              {compensationError}
+            </p>
+          </div>
+        ) : (
+          <>
+            {currentCompensation ? (
+              <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Salario actual</dt>
+                  <dd className="mt-2 text-2xl font-medium text-white">
+                    {formatCompensationAmount(currentCompensation)}
+                  </dd>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Frecuencia</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {payFrequencyLabels[currentCompensation.payFrequency]}
+                  </dd>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Vigente desde</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {formatAdminDate(currentCompensation.effectiveFrom)}
+                  </dd>
+                </div>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                  <dt className="text-xs text-white/35">Moneda</dt>
+                  <dd className="mt-2 text-sm font-medium text-white/80">
+                    {currentCompensation.currency}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <div className="admin-empty-panel mt-5 px-5 py-6">
+                <p className="text-sm font-medium text-white">Sin salario asignado</p>
+                <p className="mt-2 text-sm leading-6 text-white/45">
+                  Este empleo todavia no tiene una compensacion registrada.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-7">
+              <h3 className="text-sm font-medium text-white">
+                Historial de compensacion
+              </h3>
+              {compensation?.history.length ? (
+                <div className="admin-module-list mt-4 divide-y divide-white/[0.07]">
+                  {compensation.history.map((period) => (
+                    <article
+                      key={period.id}
+                      className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-5"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-base font-medium text-white">
+                            {formatCompensationAmount(period)}
+                          </p>
+                          <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/45">
+                            {period.effectiveTo ? "Finalizado" : "Actual"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-white/50">
+                          {payFrequencyLabels[period.payFrequency]} - {period.currency}
+                        </p>
+                      </div>
+                      <p className="text-sm text-white/55 sm:text-right">
+                        {formatAdminDate(period.effectiveFrom)}
+                        <span className="mx-2 text-white/20">-</span>
+                        {period.effectiveTo
+                          ? formatAdminDate(period.effectiveTo)
+                          : "Actual"}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-white/45">
+                  No hay periodos salariales registrados.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </section>
 
       <section className="mt-8" aria-labelledby="employment-history">
         <h2 id="employment-history" className="text-lg font-medium text-white">
@@ -475,6 +790,99 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                 loadingLabel="Guardando..."
               >
                 Confirmar
+              </Button>
+            </div>
+          </form>
+        </AdminModal>
+      ) : null}
+
+      {compensationAction ? (
+        <AdminModal
+          open
+          title={
+            compensationAction === "assign" ? "Asignar salario" : "Cambiar salario"
+          }
+          description={
+            compensationAction === "assign"
+              ? "Registra la primera compensacion del empleo activo."
+              : "Cierra el periodo vigente y crea uno nuevo desde la fecha indicada."
+          }
+          onClose={closeCompensationAction}
+        >
+          <form className="space-y-5" onSubmit={handleCompensationSubmit}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="admin-form-label">
+                Monto
+                <input
+                  className="admin-form-control"
+                  name="amount"
+                  inputMode="decimal"
+                  pattern="\d+(\.\d{1,2})?"
+                  placeholder="4500.00"
+                  min="0.01"
+                  defaultValue={currentCompensation?.amount.toFixed(2) ?? ""}
+                  required
+                />
+              </label>
+              <label className="admin-form-label">
+                Moneda
+                <input
+                  className="admin-form-control"
+                  name="currency"
+                  value="GTQ"
+                  disabled
+                  readOnly
+                />
+              </label>
+              <label className="admin-form-label">
+                Frecuencia
+                <select
+                  className="admin-form-control"
+                  name="payFrequency"
+                  defaultValue={currentCompensation?.payFrequency ?? "MONTHLY"}
+                  required
+                >
+                  <option value="MONTHLY">Mensual</option>
+                  <option value="BIWEEKLY">Quincenal</option>
+                </select>
+              </label>
+              <label className="admin-form-label">
+                Fecha de vigencia
+                <input
+                  className="admin-form-control"
+                  name="effectiveFrom"
+                  type="date"
+                  min={minimumCompensationDate}
+                  defaultValue={minimumCompensationDate}
+                  required
+                />
+              </label>
+            </div>
+
+            <p
+              className="min-h-5 text-sm text-white/65"
+              role="alert"
+              aria-live="polite"
+            >
+              {compensationFormError}
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline-on-dark"
+                className="rounded-lg border-white/10"
+                disabled={isCompensationSubmitting}
+                onClick={closeCompensationAction}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary-on-dark"
+                className="rounded-lg"
+                isLoading={isCompensationSubmitting}
+                loadingLabel="Guardando..."
+              >
+                Guardar salario
               </Button>
             </div>
           </form>

@@ -1,7 +1,9 @@
 import { adminRequest } from "./adminService";
 import type {
+  CreateCompensationInput,
   CreateEmployeeInput,
   CreatePositionInput,
+  EmployeeCompensation,
   EmployeeDetail,
   EmployeeFilters,
   EmployeeSummary,
@@ -71,6 +73,21 @@ export const employeeService = {
   reactivate(id: string, input: EmploymentTransitionInput) {
     return adminRequest<EmployeeDetail>(
       `/api/admin/employees/${id}/reactivate`,
+      withJsonBody("POST", input),
+    );
+  },
+  getCompensation(id: string, signal?: AbortSignal) {
+    return adminRequest<EmployeeCompensation>(
+      `/api/admin/employees/${id}/compensation`,
+      {
+        signal,
+        errorMessage: "No se pudo cargar la compensacion del empleado.",
+      },
+    );
+  },
+  createCompensation(id: string, input: CreateCompensationInput) {
+    return adminRequest<EmployeeCompensation>(
+      `/api/admin/employees/${id}/compensation`,
       withJsonBody("POST", input),
     );
   },

@@ -12,9 +12,14 @@ export type { Order } from "./order";
 export type { Currency, Product, ProductSpec } from "./product";
 export type { User } from "./user";
 export type {
+  CompensationCurrency,
+  CompensationEmployment,
+  CompensationPeriod,
+  CreateCompensationInput,
   CreateEmployeeInput,
   CreatePositionInput,
   CurrentEmployment,
+  EmployeeCompensation,
   EmployeeDetail,
   EmployeeFilters,
   EmployeeStatus,
@@ -23,6 +28,7 @@ export type {
   EmploymentPosition,
   EmploymentStatus,
   EmploymentTransitionInput,
+  PayFrequency,
   Position,
   TerminateEmployeeInput,
   UpdateEmployeeInput,

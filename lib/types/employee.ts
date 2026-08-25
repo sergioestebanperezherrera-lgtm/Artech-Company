@@ -1,5 +1,7 @@
 export type EmploymentStatus = "ACTIVE" | "ENDED";
 export type EmployeeStatus = "ACTIVE" | "INACTIVE";
+export type CompensationCurrency = "GTQ";
+export type PayFrequency = "MONTHLY" | "BIWEEKLY";
 
 export type Position = {
   id: string;
@@ -58,6 +60,45 @@ export type EmployeeDetail = Omit<EmployeeSummary, "currentEmployment"> & {
   employments: Employment[];
 };
 
+export type CompensationEmployment = {
+  id: string;
+  status: EmploymentStatus;
+  startDate: string;
+  endDate: string | null;
+  position: {
+    id: string;
+    name: string;
+  };
+};
+
+export type CompensationPeriod = {
+  id: string;
+  employmentId: string;
+  amount: number;
+  currency: CompensationCurrency;
+  payFrequency: PayFrequency;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  employment: CompensationEmployment;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EmployeeCompensation = {
+  employee: {
+    id: string;
+    code: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    isActive: boolean;
+  };
+  currentEmployment: CompensationEmployment | null;
+  current: CompensationPeriod | null;
+  history: CompensationPeriod[];
+};
+
 export type EmployeeFilters = {
   status?: "all" | "active" | "inactive";
   positionId?: string;
@@ -89,6 +130,13 @@ export type EmploymentTransitionInput = {
 export type TerminateEmployeeInput = {
   endDate: string;
   notes?: string;
+};
+
+export type CreateCompensationInput = {
+  amount: string;
+  currency: CompensationCurrency;
+  payFrequency: PayFrequency;
+  effectiveFrom: string;
 };
 
 export type CreatePositionInput = {
