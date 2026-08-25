@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import {
   changeEmployeePosition,
+  correctCurrentEmploymentStartDate,
   createEmployee,
+  deleteEmployeeRecord,
   getEmployee,
   listEmployees,
   reactivateEmployee,
@@ -10,6 +12,7 @@ import {
 } from "./employees.service";
 import {
   changePositionSchema,
+  correctEmploymentStartDateSchema,
   createEmployeeSchema,
   employeeIdParamsSchema,
   employeeListQuerySchema,
@@ -64,6 +67,16 @@ export async function changeEmployeePositionController(
   response.status(200).json(result.data);
 }
 
+export async function correctCurrentEmploymentStartDateController(
+  request: Request,
+  response: Response,
+) {
+  const { id } = parseRequest(employeeIdParamsSchema, request.params);
+  const input = parseRequest(correctEmploymentStartDateSchema, request.body);
+  const result = await correctCurrentEmploymentStartDate(id, input);
+  response.status(200).json(result.data);
+}
+
 export async function terminateEmployeeController(
   request: Request,
   response: Response,
@@ -82,4 +95,13 @@ export async function reactivateEmployeeController(
   const input = parseRequest(reactivateEmployeeSchema, request.body);
   const result = await reactivateEmployee(id, input);
   response.status(200).json(result.data);
+}
+
+export async function deleteEmployeeRecordController(
+  request: Request,
+  response: Response,
+) {
+  const { id } = parseRequest(employeeIdParamsSchema, request.params);
+  await deleteEmployeeRecord(id);
+  response.status(204).send();
 }

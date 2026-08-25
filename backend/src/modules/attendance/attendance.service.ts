@@ -170,6 +170,10 @@ function addDaysToDateString(value: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function addMinutes(value: Date, minutes: number) {
+  return new Date(value.getTime() + minutes * 60_000);
+}
+
 function localDateTimeToUtc(workDate: string, minutes: number) {
   const [year, month, day] = workDate.split("-").map(Number);
   const targetUtcMs = Date.UTC(
@@ -220,6 +224,76 @@ function calculateLateMinutes(clockInAt: Date, expectedStartDateTime: Date) {
   return Math.max(
     0,
     Math.floor((clockInAt.getTime() - expectedStartDateTime.getTime()) / 60_000),
+  );
+}
+
+function getClockInCandidateWorkDates(input: ClockInInput, now: Date) {
+  if (input.workDate) {
+    return [input.workDate];
+  }
+
+  const today = formatDateInBusinessZone(now);
+  return [today, addDaysToDateString(today, -1)];
+}
+
+async function resolveClockInContext(
+  transaction: Prisma.TransactionClient,
+  input: ClockInInput,
+  now: Date,
+) {
+  let firstWindowError: AppError | null = null;
+  let firstResolutionError: AppError | null = null;
+
+  for (const workDate of getClockInCandidateWorkDates(input, now)) {
+    try {
+      const { employment, shiftAssignment } = await resolveEmploymentAndShift(
+        transaction,
+        input.employeeId,
+        workDate,
+      );
+      const startMinutes = timeToMinutes(shiftAssignment.shift.startTime);
+      const endMinutes = timeToMinutes(shiftAssignment.shift.endTime);
+      const expected = getExpectedDateTimes(workDate, startMinutes, endMinutes);
+      const earliestClockInAt = addMinutes(
+        expected.expectedStartDateTime,
+        -env.earlyClockInMinutes,
+      );
+
+      if (now < earliestClockInAt) {
+        firstWindowError ??= new AppError(
+          `Clock-in is only allowed from ${env.earlyClockInMinutes} minutes before shift start.`,
+          409,
+        );
+        continue;
+      }
+
+      if (now > expected.expectedEndDateTime) {
+        firstWindowError ??= new AppError(
+          "Clock-in is not allowed after the scheduled shift has ended.",
+          409,
+        );
+        continue;
+      }
+
+      return {
+        workDate,
+        employment,
+        shiftAssignment,
+        ...expected,
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        firstResolutionError ??= error;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw firstWindowError ?? firstResolutionError ?? new AppError(
+    "No valid workday is available for clock-in.",
+    409,
   );
 }
 
@@ -427,21 +501,18 @@ export function listEmployeeAttendance(employeeId: string, query: AttendanceList
 }
 
 export async function clockIn(input: ClockInInput, now = new Date()) {
-  const workDate = input.workDate ?? formatDateInBusinessZone(now);
-
   try {
     const attendanceId = await runAttendanceTransaction(async (transaction) => {
-      const { employment, shiftAssignment } = await resolveEmploymentAndShift(
+      const {
+        workDate,
+        employment,
+        shiftAssignment,
+        expectedStartDateTime,
+        crossesMidnight,
+      } = await resolveClockInContext(
         transaction,
-        input.employeeId,
-        workDate,
-      );
-      const startMinutes = timeToMinutes(shiftAssignment.shift.startTime);
-      const endMinutes = timeToMinutes(shiftAssignment.shift.endTime);
-      const { expectedStartDateTime, crossesMidnight } = getExpectedDateTimes(
-        workDate,
-        startMinutes,
-        endMinutes,
+        input,
+        now,
       );
       const lateMinutes = calculateLateMinutes(now, expectedStartDateTime);
       const status = lateMinutes > 0 ? AttendanceStatus.LATE : AttendanceStatus.PRESENT;

@@ -28,6 +28,22 @@ export function addDays(value: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+export function getEmploymentTimelineStatus(
+  employeeIsActive: boolean,
+  startDate: string | null | undefined,
+  today = getTodayDate(),
+) {
+  if (!employeeIsActive) {
+    return "Finalizado";
+  }
+
+  if (startDate && startDate > today) {
+    return "Programado";
+  }
+
+  return "Activo";
+}
+
 export function getAdminActionError(error: unknown, fallback: string) {
   if (!(error instanceof AdminServiceError)) {
     return fallback;

@@ -9,6 +9,7 @@ import {
 } from "./employees.repository";
 import type {
   ChangePositionInput,
+  CorrectEmploymentStartDateInput,
   CreateEmployeeInput,
   EmployeeListQuery,
   ReactivateEmployeeInput,
@@ -53,6 +54,51 @@ function toDateOnly(value: Date | null) {
 
 function previousDay(value: Date) {
   return new Date(value.getTime() - 24 * 60 * 60 * 1000);
+}
+
+async function getEarliestOperationalConflict(
+  transaction: Prisma.TransactionClient,
+  employmentId: string,
+  startDate: Date,
+) {
+  const [compensation, shiftAssignment, attendance] = await Promise.all([
+    transaction.compensationPeriod.findFirst({
+      where: {
+        employmentId,
+        effectiveFrom: { lt: startDate },
+      },
+      orderBy: { effectiveFrom: "asc" },
+      select: { effectiveFrom: true },
+    }),
+    transaction.shiftAssignment.findFirst({
+      where: {
+        employmentId,
+        effectiveFrom: { lt: startDate },
+      },
+      orderBy: { effectiveFrom: "asc" },
+      select: { effectiveFrom: true },
+    }),
+    transaction.attendanceRecord.findFirst({
+      where: {
+        employmentId,
+        workDate: { lt: startDate },
+      },
+      orderBy: { workDate: "asc" },
+      select: { workDate: true },
+    }),
+  ]);
+
+  if (compensation) {
+    return "A compensation period exists before the new employment start date.";
+  }
+  if (shiftAssignment) {
+    return "A shift assignment exists before the new employment start date.";
+  }
+  if (attendance) {
+    return "An attendance record exists before the new employment start date.";
+  }
+
+  return null;
 }
 
 async function closeOpenCompensationPeriod(
@@ -461,6 +507,85 @@ export async function changeEmployeePosition(
   }
 }
 
+export async function correctCurrentEmploymentStartDate(
+  id: string,
+  input: CorrectEmploymentStartDateInput,
+): Promise<AdminMutationResult<ReturnType<typeof mapEmployeeDetail>>> {
+  try {
+    const employmentId = await runEmployeeTransaction(async (transaction) => {
+      await lockEmployee(transaction, id);
+      const employee = await transaction.employee.findUniqueOrThrow({
+        where: { id },
+        select: {
+          employments: {
+            orderBy: { startDate: "desc" },
+            include: {
+              compensationPeriods: {
+                select: { id: true },
+                take: 1,
+              },
+              shiftAssignments: {
+                select: { id: true },
+                take: 1,
+              },
+            },
+          },
+        },
+      });
+      const activeEmployment = employee.employments.find(
+        (employment) => employment.status === EmploymentStatus.ACTIVE,
+      );
+
+      if (!activeEmployment) {
+        throw new AppError("Employee has no active employment.", 409);
+      }
+
+      const startDate = toDate(input.startDate);
+      const previousEmployment = employee.employments.find(
+        (employment) =>
+          employment.id !== activeEmployment.id &&
+          employment.endDate !== null &&
+          employment.endDate >= startDate,
+      );
+
+      if (previousEmployment) {
+        throw new AppError(
+          "The new start date overlaps a previous employment period.",
+          409,
+        );
+      }
+
+      const conflict = await getEarliestOperationalConflict(
+        transaction,
+        activeEmployment.id,
+        startDate,
+      );
+
+      if (conflict) {
+        throw new AppError(conflict, 409);
+      }
+
+      await transaction.employment.update({
+        where: { id: activeEmployment.id },
+        data: { startDate },
+      });
+
+      return activeEmployment.id;
+    });
+
+    return {
+      data: mapEmployeeDetail(await requireEmployeeDetail(id)),
+      pendingEvent: {
+        action: "employment.start_date_corrected",
+        entity: "employment",
+        entityId: employmentId,
+      },
+    };
+  } catch (error) {
+    rethrowEmployeeMutationError(error);
+  }
+}
+
 export async function terminateEmployee(
   id: string,
   input: TerminateEmployeeInput,
@@ -590,6 +715,97 @@ export async function reactivateEmployee(
         action: "employment.reactivated",
         entity: "employment",
         entityId: employmentId,
+      },
+    };
+  } catch (error) {
+    rethrowEmployeeMutationError(error);
+  }
+}
+
+export async function deleteEmployeeRecord(id: string) {
+  try {
+    await runEmployeeTransaction(async (transaction) => {
+      await lockEmployee(transaction, id);
+      const employee = await transaction.employee.findUniqueOrThrow({
+        where: { id },
+        select: {
+          id: true,
+          userId: true,
+          employments: {
+            select: { id: true },
+          },
+        },
+      });
+
+      if (employee.userId) {
+        throw new AppError(
+          "Employees with system access cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+
+      if (employee.employments.length !== 1) {
+        throw new AppError(
+          "Employees with employment history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+
+      const employmentIds = employee.employments.map((employment) => employment.id);
+      const [attendanceCount, compensationCount, shiftAssignmentCount, saleCount] =
+        await Promise.all([
+          transaction.attendanceRecord.count({
+            where: { employeeId: id },
+          }),
+          transaction.compensationPeriod.count({
+            where: { employmentId: { in: employmentIds } },
+          }),
+          transaction.shiftAssignment.count({
+            where: { employmentId: { in: employmentIds } },
+          }),
+          transaction.sale.count({
+            where: { employeeId: id },
+          }),
+        ]);
+
+      if (attendanceCount > 0) {
+        throw new AppError(
+          "Employees with attendance history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+      if (compensationCount > 0) {
+        throw new AppError(
+          "Employees with compensation history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+      if (shiftAssignmentCount > 0) {
+        throw new AppError(
+          "Employees with shift history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+      if (saleCount > 0) {
+        throw new AppError(
+          "Employees with sales history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+
+      await transaction.employment.deleteMany({
+        where: { employeeId: id },
+      });
+      await transaction.employee.delete({
+        where: { id },
+      });
+    });
+
+    return {
+      pendingEvent: {
+        action: "employee.deleted",
+        entity: "employee",
+        entityId: id,
       },
     };
   } catch (error) {

@@ -12,7 +12,9 @@ import {
 import { listEmployeeAttendanceController } from "../attendance/attendance.controller";
 import {
   changeEmployeePositionController,
+  correctCurrentEmploymentStartDateController,
   createEmployeeController,
+  deleteEmployeeRecordController,
   getEmployeeController,
   listEmployeesController,
   reactivateEmployeeController,
@@ -73,6 +75,11 @@ router.post(
   asyncHandler(changeEmployeePositionController),
 );
 router.post(
+  "/:id/correct-start-date",
+  requirePermission("employee.update"),
+  asyncHandler(correctCurrentEmploymentStartDateController),
+);
+router.post(
   "/:id/terminate",
   requirePermission("employee.deactivate"),
   asyncHandler(terminateEmployeeController),
@@ -81,6 +88,11 @@ router.post(
   "/:id/reactivate",
   requirePermission("employee.update"),
   asyncHandler(reactivateEmployeeController),
+);
+router.delete(
+  "/:id",
+  requirePermission("employee.deactivate"),
+  asyncHandler(deleteEmployeeRecordController),
 );
 
 export default router;

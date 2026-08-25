@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BriefcaseBusiness,
+  CalendarDays,
   Clock3,
   DollarSign,
   Pencil,
+  Trash2,
   UserCheck,
   UserMinus,
 } from "lucide-react";
@@ -48,10 +51,18 @@ import {
   addDays,
   formatAdminDate,
   getAdminActionError,
+  getEmploymentTimelineStatus,
   getTodayDate,
 } from "./employeeUi";
 
-type EmployeeAction = "edit" | "change" | "terminate" | "reactivate" | null;
+type EmployeeAction =
+  | "edit"
+  | "change"
+  | "correctStartDate"
+  | "terminate"
+  | "delete"
+  | "reactivate"
+  | null;
 type CompensationAction = "assign" | "change" | null;
 type ShiftAction = "assign" | "change" | null;
 
@@ -68,9 +79,17 @@ const actionCopy: Record<Exclude<EmployeeAction, null>, { title: string; descrip
     title: "Cambiar puesto",
     description: "El empleo actual se cerrara y el nuevo quedara activo.",
   },
+  correctStartDate: {
+    title: "Corregir fecha de inicio",
+    description: "Corrige un error de captura en la relacion laboral actual.",
+  },
   terminate: {
     title: "Finalizar relacion laboral",
     description: "El historial se conservara y la cuenta de usuario no sera eliminada.",
+  },
+  delete: {
+    title: "Eliminar registro",
+    description: "Solo para empleados creados por error y sin historial operativo.",
   },
   reactivate: {
     title: "Reactivar empleado",
@@ -100,7 +119,7 @@ function getCompensationError(error: unknown, fallback: string) {
   }
 
   if (error.status === 400) {
-    return "Revisa el monto y la fecha de vigencia.";
+    return "Revisa el monto y la fecha desde la que el salario sera valido.";
   }
   if (error.status === 401) {
     return "Tu sesion expiro. Inicia sesion nuevamente.";
@@ -124,7 +143,7 @@ function getShiftError(error: unknown, fallback: string) {
   }
 
   if (error.status === 400) {
-    return "Revisa el turno y la fecha de vigencia.";
+    return "Revisa el turno y la fecha de inicio.";
   }
   if (error.status === 401) {
     return "Tu sesion expiro. Inicia sesion nuevamente.";
@@ -148,6 +167,7 @@ function validateAmountInput(value: string) {
 }
 
 export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
+  const router = useRouter();
   const identity = useAdminIdentity();
   const canUpdate = identity.permissions.includes("employee.update");
   const canDeactivate = identity.permissions.includes("employee.deactivate");
@@ -426,6 +446,23 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           phone: phone || null,
         });
         setStatusMessage("Los datos del empleado fueron actualizados.");
+      } else if (action === "correctStartDate") {
+        updated = await employeeService.correctStartDate(employee.id, {
+          startDate: String(formData.get("startDate") ?? ""),
+        });
+        setStatusMessage("La fecha de inicio fue corregida.");
+      } else if (action === "delete") {
+        const confirmationCode = String(formData.get("confirmationCode") ?? "").trim();
+
+        if (confirmationCode !== employee.code) {
+          setError(`Escribe ${employee.code} para confirmar la eliminacion.`);
+          return;
+        }
+
+        await employeeService.deleteRecord(employee.id);
+        setStatusMessage("El registro fue eliminado.");
+        router.push("/admin/employees");
+        return;
       } else if (action === "terminate") {
         const notes = String(formData.get("notes") ?? "").trim();
         updated = await employeeService.terminate(employee.id, {
@@ -614,6 +651,10 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
   const minimumShiftDate = currentShiftAssignment
     ? addDays(currentShiftAssignment.effectiveFrom, 1)
     : employee.currentEmployment?.startDate ?? getTodayDate();
+  const employmentTimelineStatus = getEmploymentTimelineStatus(
+    employee.isActive,
+    employee.currentEmployment?.startDate,
+  );
 
   return (
     <div>
@@ -647,6 +688,16 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
             >
               <Pencil aria-hidden="true" size={15} />
               Editar
+            </Button>
+          ) : null}
+          {employee.isActive && employee.currentEmployment && canUpdate ? (
+            <Button
+              variant="outline-on-dark"
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              onClick={() => setAction("correctStartDate")}
+            >
+              <CalendarDays aria-hidden="true" size={15} />
+              Corregir fecha de inicio
             </Button>
           ) : null}
           {employee.isActive && canUpdate ? (
@@ -716,6 +767,12 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                 {formatAdminDate(employee.currentEmployment?.startDate ?? null)}
               </dd>
             </div>
+            <div>
+              <dt className="text-xs text-white/35">Estado laboral</dt>
+              <dd className="mt-1 text-sm text-white/75">
+                {employmentTimelineStatus}
+              </dd>
+            </div>
           </dl>
         </section>
 
@@ -733,6 +790,36 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           </p>
         </section>
       </div>
+
+      {canDeactivate ? (
+        <section
+          className="admin-panel mt-4 p-5"
+          aria-labelledby="employee-danger-zone"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2
+                id="employee-danger-zone"
+                className="text-base font-medium text-white"
+              >
+                Correcciones operativas
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45">
+                Eliminar registro solo se usa para empleados creados por error y
+                sin historial operativo. Si ya existe historial, usa Dar de baja.
+              </p>
+            </div>
+            <Button
+              variant="outline-on-dark"
+              className="min-h-10 rounded-lg border-white/10 px-3"
+              onClick={() => setAction("delete")}
+            >
+              <Trash2 aria-hidden="true" size={15} />
+              Eliminar registro
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="admin-panel mt-4 p-5" aria-labelledby="employee-compensation">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -796,7 +883,7 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                   </dd>
                 </div>
                 <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
-                  <dt className="text-xs text-white/35">Vigente desde</dt>
+                  <dt className="text-xs text-white/35">Salario valido desde</dt>
                   <dd className="mt-2 text-sm font-medium text-white/80">
                     {formatAdminDate(currentCompensation.effectiveFrom)}
                   </dd>
@@ -1170,6 +1257,42 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                   />
                 </label>
               </div>
+            ) : action === "correctStartDate" ? (
+              <>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/50">
+                  Modifica la fecha de inicio del empleo activo. El backend
+                  rechazara el cambio si deja salarios, turnos o asistencias antes
+                  del inicio laboral.
+                </div>
+                <label className="admin-form-label">
+                  Nueva fecha de inicio
+                  <input
+                    className="admin-form-control"
+                    name="startDate"
+                    type="date"
+                    defaultValue={employee.currentEmployment?.startDate ?? getTodayDate()}
+                    required
+                  />
+                </label>
+              </>
+            ) : action === "delete" ? (
+              <>
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/50">
+                  Esta accion solo debe utilizarse para registros creados por error.
+                  Si el empleado tiene asistencia, salario, turnos, ventas o acceso al
+                  sistema, el backend rechazara la eliminacion.
+                </div>
+                <label className="admin-form-label">
+                  Escribe {employee.code} para confirmar
+                  <input
+                    className="admin-form-control font-mono"
+                    name="confirmationCode"
+                    autoComplete="off"
+                    placeholder={employee.code}
+                    required
+                  />
+                </label>
+              </>
             ) : action === "terminate" ? (
               <>
                 <label className="admin-form-label">
@@ -1246,12 +1369,16 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
               </Button>
               <Button
                 type="submit"
-                variant={action === "terminate" ? "outline-on-dark" : "primary-on-dark"}
+                variant={
+                  action === "terminate" || action === "delete"
+                    ? "outline-on-dark"
+                    : "primary-on-dark"
+                }
                 className="rounded-lg"
                 isLoading={isSubmitting}
-                loadingLabel="Guardando..."
+                loadingLabel={action === "delete" ? "Eliminando..." : "Guardando..."}
               >
-                Confirmar
+                {action === "delete" ? "Eliminar registro" : "Confirmar"}
               </Button>
             </div>
           </form>
@@ -1267,7 +1394,7 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           description={
             compensationAction === "assign"
               ? "Registra la primera compensacion del empleo activo."
-              : "Cierra el periodo vigente y crea uno nuevo desde la fecha indicada."
+              : "Cierra el salario actual y crea uno nuevo desde la fecha indicada."
           }
           onClose={closeCompensationAction}
         >
@@ -1309,7 +1436,7 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
                 </select>
               </label>
               <label className="admin-form-label">
-                Fecha de vigencia
+                Salario valido desde
                 <input
                   className="admin-form-control"
                   name="effectiveFrom"
@@ -1358,7 +1485,7 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
           description={
             shiftAction === "assign"
               ? "Registra el primer horario del empleo activo."
-              : "Cierra el turno vigente y crea una nueva asignacion desde la fecha indicada."
+              : "Cierra el turno actual y crea una nueva asignacion desde la fecha indicada."
           }
           onClose={closeShiftAction}
         >
@@ -1376,7 +1503,7 @@ export function EmployeeDetailPage({ employeeId }: EmployeeDetailPageProps) {
               </select>
             </label>
             <label className="admin-form-label">
-              Fecha de vigencia
+              Inicio del turno
               <input
                 className="admin-form-control"
                 name="effectiveFrom"

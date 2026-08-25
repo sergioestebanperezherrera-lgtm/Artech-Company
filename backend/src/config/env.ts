@@ -37,6 +37,20 @@ function parsePositiveInteger(
   return parsed;
 }
 
+function parseNonNegativeInteger(
+  value: string | undefined,
+  fallback: number,
+  name: string,
+) {
+  const parsed = Number(value ?? fallback);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
 function parseTimeZone(value: string | undefined) {
   const timeZone = value?.trim() || "America/Guatemala";
 
@@ -67,4 +81,9 @@ export const env = {
     process.env.GOOGLE_REDIRECT_URI ??
     "http://localhost:4000/api/auth/google/callback",
   businessTimeZone: parseTimeZone(process.env.BUSINESS_TIME_ZONE),
+  earlyClockInMinutes: parseNonNegativeInteger(
+    process.env.EARLY_CLOCK_IN_MINUTES,
+    30,
+    "EARLY_CLOCK_IN_MINUTES",
+  ),
 };

@@ -23,6 +23,7 @@ export type {
   CompensationCurrency,
   CompensationEmployment,
   CompensationPeriod,
+  CorrectEmploymentStartDateInput,
   CreateCompensationInput,
   CreateEmployeeInput,
   CreatePositionInput,

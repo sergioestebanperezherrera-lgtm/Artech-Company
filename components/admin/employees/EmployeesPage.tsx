@@ -9,7 +9,11 @@ import type { EmployeeFilters, EmployeeSummary, Position } from "@/lib/types";
 import { useAdminIdentity } from "../AdminContext";
 import { EmployeeFormDialog } from "./EmployeeFormDialog";
 import { EmployeeStatusBadge } from "./EmployeeStatusBadge";
-import { formatAdminDate, getAdminActionError } from "./employeeUi";
+import {
+  formatAdminDate,
+  getAdminActionError,
+  getEmploymentTimelineStatus,
+} from "./employeeUi";
 
 export function EmployeesPage() {
   const identity = useAdminIdentity();
@@ -257,7 +261,15 @@ export function EmployeesPage() {
                       </td>
                       <td>{employee.currentEmployment?.position.name ?? "Sin puesto activo"}</td>
                       <td>{formatAdminDate(employee.currentEmployment?.startDate ?? null)}</td>
-                      <td><EmployeeStatusBadge active={employee.isActive} /></td>
+                      <td>
+                        <EmployeeStatusBadge active={employee.isActive} />
+                        <p className="mt-2 text-xs text-white/38">
+                          {getEmploymentTimelineStatus(
+                            employee.isActive,
+                            employee.currentEmployment?.startDate,
+                          )}
+                        </p>
+                      </td>
                       <td>{employee.hasSystemAccess ? "Vinculado" : "Sin acceso"}</td>
                       <td className="text-right">
                         <Link
@@ -299,6 +311,15 @@ export function EmployeesPage() {
                       <dt className="text-white/35">Inicio</dt>
                       <dd className="mt-1 text-white/70">
                         {formatAdminDate(employee.currentEmployment?.startDate ?? null)}
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-white/35">Estado laboral</dt>
+                      <dd className="mt-1 text-white/70">
+                        {getEmploymentTimelineStatus(
+                          employee.isActive,
+                          employee.currentEmployment?.startDate,
+                        )}
                       </dd>
                     </div>
                     <div className="col-span-2">

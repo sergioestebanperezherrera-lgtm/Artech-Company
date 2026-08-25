@@ -99,6 +99,10 @@ export const changePositionSchema = z.object({
   notes: optionalNotesSchema.optional(),
 });
 
+export const correctEmploymentStartDateSchema = z.object({
+  startDate: dateSchema,
+});
+
 export const terminateEmployeeSchema = z.object({
   endDate: dateSchema,
   notes: optionalNotesSchema.optional(),
@@ -116,6 +120,9 @@ export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type ChangePositionInput = z.infer<typeof changePositionSchema>;
+export type CorrectEmploymentStartDateInput = z.infer<
+  typeof correctEmploymentStartDateSchema
+>;
 export type TerminateEmployeeInput = z.infer<typeof terminateEmployeeSchema>;
 export type ReactivateEmployeeInput = z.infer<typeof reactivateEmployeeSchema>;
 

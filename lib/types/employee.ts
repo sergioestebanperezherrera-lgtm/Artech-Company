@@ -186,6 +186,10 @@ export type EmploymentTransitionInput = {
   notes?: string;
 };
 
+export type CorrectEmploymentStartDateInput = {
+  startDate: string;
+};
+
 export type TerminateEmployeeInput = {
   endDate: string;
   notes?: string;

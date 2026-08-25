@@ -456,7 +456,14 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         return;
       }
 
-      const input = method === "GET" ? undefined : request.postDataJSON();
+      if (match[2] === "attendance" && method === "GET") {
+        await fulfillJson(route, 200, []);
+        return;
+      }
+
+      const input = ["POST", "PATCH"].includes(method)
+        ? request.postDataJSON()
+        : undefined;
 
       if (match[2] === "compensation" && method === "POST") {
         if (!employee.isActive || !employee.currentEmployment) {
@@ -544,6 +551,12 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         return;
       }
 
+      if (match[2] === "correct-start-date" && method === "POST") {
+        employee.currentEmployment.startDate = input.startDate;
+        await fulfillJson(route, 200, employee);
+        return;
+      }
+
       if (match[2] === "terminate" && method === "POST") {
         employee.currentEmployment.status = "ENDED";
         employee.currentEmployment.endDate = input.endDate;
@@ -566,6 +579,13 @@ async function mockAdminApi(page, state, permissions, requestCounter = { employe
         employee.isActive = true;
         employee.status = "ACTIVE";
         await fulfillJson(route, 200, employee);
+        return;
+      }
+
+      if (!match[2] && method === "DELETE") {
+        const index = state.employees.findIndex((item) => item.id === employee.id);
+        state.employees.splice(index, 1);
+        await route.fulfill({ status: 204 });
         return;
       }
     }
@@ -653,7 +673,7 @@ try {
     await page.getByRole("button", { name: "Asignar salario" }).click();
     await page.getByLabel("Monto").fill("4000");
     await page.getByLabel("Frecuencia").selectOption("MONTHLY");
-    await page.getByLabel("Fecha de vigencia").fill("2026-01-10");
+    await page.getByLabel("Salario valido desde").fill("2026-01-10");
     await page.getByRole("button", { name: "Guardar salario" }).click();
     await page.getByText("El salario fue asignado correctamente.").waitFor();
     await page.getByText("Q4,000.00").first().waitFor();
@@ -661,7 +681,7 @@ try {
     await page.getByRole("button", { name: "Cambiar salario" }).click();
     await page.getByLabel("Monto").fill("4500.50");
     await page.getByLabel("Frecuencia").selectOption("BIWEEKLY");
-    await page.getByLabel("Fecha de vigencia").fill("2026-02-01");
+    await page.getByLabel("Salario valido desde").fill("2026-02-01");
     await page.getByRole("button", { name: "Guardar salario" }).click();
     await page.getByText("El cambio salarial fue registrado.").waitFor();
     await page.getByText("Q4,500.50").first().waitFor();
@@ -671,7 +691,7 @@ try {
     await page
       .getByLabel("Turno activo")
       .selectOption({ label: "Turno diurno QA - Diurno - 08:00 - 17:00" });
-    await page.getByLabel("Fecha de vigencia").fill("2026-01-10");
+    await page.getByLabel("Inicio del turno").fill("2026-01-10");
     await page.getByRole("button", { name: "Guardar turno" }).click();
     await page.getByText("El turno fue asignado correctamente.").waitFor();
     await page.getByText("Turno diurno QA").first().waitFor();
@@ -680,7 +700,7 @@ try {
     await page
       .getByLabel("Turno activo")
       .selectOption({ label: "Turno nocturno QA - Nocturno - 22:00 - 06:00" });
-    await page.getByLabel("Fecha de vigencia").fill("2026-02-01");
+    await page.getByLabel("Inicio del turno").fill("2026-02-01");
     await page.getByRole("button", { name: "Guardar turno" }).click();
     await page.getByText("El cambio de turno fue registrado.").waitFor();
     await page.getByText("Turno nocturno QA").first().waitFor();
@@ -740,6 +760,60 @@ try {
       (await page.getByText("Q4,500.50").count()) === 0,
       "No debe revelar salario sin salary.read.",
     );
+    await context.close();
+  });
+
+  await runTest("SUPER_ADMIN corrige datos, inicio laboral y elimina descartables", async () => {
+    const position = positionPayload(state, {
+      name: `Correcciones QA ${Date.now()}`,
+      description: null,
+    });
+    state.positions.push(position);
+    const scheduled = employeeDetail(state, {
+      firstName: "Fecha",
+      lastName: "Futura",
+      email: "fecha.futura@artech.local",
+      phone: "+502 5555 0404",
+      positionId: position.id,
+      startDate: "2030-01-01",
+    });
+    const disposable = employeeDetail(state, {
+      firstName: "Registro",
+      lastName: "Error",
+      email: "registro.error@artech.local",
+      phone: "+502 5555 0505",
+      positionId: position.id,
+      startDate: "2026-01-10",
+    });
+    state.employees.push(scheduled, disposable);
+
+    const { context, page } = await createPage(browser);
+    await mockAdminApi(page, state, employeePermissions);
+
+    await page.goto(`${baseUrl}/admin/employees/${scheduled.id}`);
+    await page.getByText("Programado").first().waitFor();
+    await page.getByRole("button", { name: "Editar" }).click();
+    await page.getByLabel("Nombre").fill("Fecha Corregida");
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByText("Los datos del empleado fueron actualizados.").waitFor();
+    await page.getByRole("heading", { name: "Fecha Corregida Futura" }).waitFor();
+
+    await page.getByRole("button", { name: "Corregir fecha de inicio" }).click();
+    await page.getByLabel("Nueva fecha de inicio").fill("2026-01-15");
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await page.getByText("La fecha de inicio fue corregida.").waitFor();
+    await page.getByText("15 ene 2026").first().waitFor();
+
+    await page.goto(`${baseUrl}/admin/employees/${disposable.id}`);
+    await page.getByRole("button", { name: "Eliminar registro" }).click();
+    await page.getByLabel(`Escribe ${disposable.code} para confirmar`).fill(disposable.code);
+    await page.getByRole("button", { name: "Eliminar registro" }).last().click();
+    await page.waitForURL(`${baseUrl}/admin/employees`);
+    assert(
+      !state.employees.some((employee) => employee.id === disposable.id),
+      "El registro descartable debe salir del estado mock.",
+    );
+
     await context.close();
   });
 

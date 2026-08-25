@@ -314,6 +314,58 @@ test("late clock-in marks LATE and calculates minutes", async () => {
   assert.equal(record.lateMinutes, 17);
 });
 
+test("clock-in respects early window and shift end for day shifts", async () => {
+  const position = await createPosition(`Asistencia ventana dia ${runId}`);
+  const shift = await createShift("VENTANA_DIA", {
+    startTime: "05:00",
+    endTime: "13:00",
+  });
+
+  const tooEarly = await createEmployee("MuyTemprano", position.id);
+  await assignShift(tooEarly.id, shift.id);
+  await assert.rejects(
+    clockIn(
+      { employeeId: tooEarly.id, workDate: "2026-08-25" },
+      localTime("2026-08-25", 4, 29),
+    ),
+  );
+
+  const earliest = await createEmployee("VentanaInicio", position.id);
+  await assignShift(earliest.id, shift.id);
+  const earliestRecord = await clockIn(
+    { employeeId: earliest.id, workDate: "2026-08-25" },
+    localTime("2026-08-25", 4, 30),
+  );
+  assert.equal(earliestRecord.status, "PRESENT");
+  assert.equal(earliestRecord.lateMinutes, 0);
+
+  const punctual = await createEmployee("VentanaPuntual", position.id);
+  await assignShift(punctual.id, shift.id);
+  const punctualRecord = await clockIn(
+    { employeeId: punctual.id, workDate: "2026-08-25" },
+    localTime("2026-08-25", 5, 0),
+  );
+  assert.equal(punctualRecord.status, "PRESENT");
+
+  const late = await createEmployee("VentanaTarde", position.id);
+  await assignShift(late.id, shift.id);
+  const lateRecord = await clockIn(
+    { employeeId: late.id, workDate: "2026-08-25" },
+    localTime("2026-08-25", 5, 1),
+  );
+  assert.equal(lateRecord.status, "LATE");
+  assert.equal(lateRecord.lateMinutes, 1);
+
+  const afterShift = await createEmployee("VentanaFin", position.id);
+  await assignShift(afterShift.id, shift.id);
+  await assert.rejects(
+    clockIn(
+      { employeeId: afterShift.id, workDate: "2026-08-25" },
+      localTime("2026-08-25", 13, 1),
+    ),
+  );
+});
+
 test("duplicate clock-in and database duplicate records are rejected", async () => {
   const position = await createPosition(`Asistencia duplicada ${runId}`);
   const employee = await createEmployee("Duplicada", position.id);
@@ -449,6 +501,40 @@ test("overnight shift keeps clock-out on the same workDate", async () => {
   assert.equal(opened.expectedEndTime, "06:00");
   assert.equal(closed.workDate, "2026-08-25");
   assert.ok(closed.clockOutAt?.startsWith("2026-08-26"));
+});
+
+test("overnight clock-in uses the early window and keeps start-day workDate", async () => {
+  const position = await createPosition(`Asistencia ventana noche ${runId}`);
+  const shift = await createShift("VENTANA_NOCHE", {
+    type: "NIGHT",
+    startTime: "22:00",
+    endTime: "06:00",
+    workDays: ["TUESDAY"],
+  });
+
+  const tooEarly = await createEmployee("NocheTemprano", position.id);
+  await assignShift(tooEarly.id, shift.id);
+  await assert.rejects(
+    clockIn(
+      { employeeId: tooEarly.id, workDate: "2026-08-25" },
+      localTime("2026-08-25", 21, 29),
+    ),
+  );
+
+  const valid = await createEmployee("NocheValida", position.id);
+  await assignShift(valid.id, shift.id);
+  const opened = await clockIn(
+    { employeeId: valid.id, workDate: "2026-08-25" },
+    localTime("2026-08-25", 21, 30),
+  );
+  const closed = await clockOut(
+    { employeeId: valid.id },
+    localTime("2026-08-26", 6, 0),
+  );
+
+  assert.equal(opened.workDate, "2026-08-25");
+  assert.equal(opened.expectedCrossesMidnight, true);
+  assert.equal(closed.workDate, "2026-08-25");
 });
 
 test("attendance snapshot does not change when Shift is edited later", async () => {

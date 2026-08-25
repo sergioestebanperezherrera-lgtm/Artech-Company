@@ -5,6 +5,7 @@ import type {
   CreatePositionInput,
   CreateShiftAssignmentInput,
   CreateShiftInput,
+  CorrectEmploymentStartDateInput,
   EmployeeCompensation,
   EmployeeDetail,
   EmployeeFilters,
@@ -69,6 +70,12 @@ export const employeeService = {
       withJsonBody("POST", input),
     );
   },
+  correctStartDate(id: string, input: CorrectEmploymentStartDateInput) {
+    return adminRequest<EmployeeDetail>(
+      `/api/admin/employees/${id}/correct-start-date`,
+      withJsonBody("POST", input),
+    );
+  },
   terminate(id: string, input: TerminateEmployeeInput) {
     return adminRequest<EmployeeDetail>(
       `/api/admin/employees/${id}/terminate`,
@@ -80,6 +87,11 @@ export const employeeService = {
       `/api/admin/employees/${id}/reactivate`,
       withJsonBody("POST", input),
     );
+  },
+  deleteRecord(id: string) {
+    return adminRequest<void>(`/api/admin/employees/${id}`, {
+      method: "DELETE",
+    });
   },
   getCompensation(id: string, signal?: AbortSignal) {
     return adminRequest<EmployeeCompensation>(
