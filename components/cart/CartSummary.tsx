@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui";
 import type { Currency } from "@/lib/types";
 import { formatPrice } from "@/lib/utils/formatPrice";
@@ -20,27 +19,6 @@ export function CartSummary({
   isAuthenticated,
   onCheckout,
 }: CartSummaryProps) {
-  const [message, setMessage] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleCheckout = () => {
-    if (isEmpty || isProcessing) {
-      return;
-    }
-
-    setMessage("");
-    setIsProcessing(true);
-
-    if (isAuthenticated) {
-      setMessage("Compra preparada. El pago real se conectará con el backend.");
-      setIsProcessing(false);
-      return;
-    }
-
-    onCheckout();
-    setIsProcessing(false);
-  };
-
   return (
     <div className="border-t border-border-on-light pt-5">
       <div className="flex items-center justify-between gap-4 text-text-primary-on-light">
@@ -51,23 +29,18 @@ export function CartSummary({
       </div>
       <p className="mt-2 text-xs leading-5 text-text-secondary-on-light">
         {isAuthenticated
-          ? "Compra lista para revisión. El cobro real queda pendiente de backend."
-          : "Inicia sesión para continuar con la compra."}
+          ? "Revisa los productos y cantidades antes de continuar."
+          : "Inicia sesión para continuar con tu carrito."}
       </p>
-      <Button
-        variant="primary-on-light"
-        className="mt-5 w-full"
-        disabled={isEmpty}
-        isLoading={isProcessing}
-        loadingLabel={isAuthenticated ? "Preparando compra..." : "Abriendo login..."}
-        onClick={handleCheckout}
-      >
-        Proceder al pago
-      </Button>
-      {message ? (
-        <p className="mt-3 text-sm text-text-secondary-on-light" role="status" aria-live="polite">
-          {message}
-        </p>
+      {!isAuthenticated ? (
+        <Button
+          variant="primary-on-light"
+          className="mt-5 w-full"
+          disabled={isEmpty}
+          onClick={onCheckout}
+        >
+          Iniciar sesión para continuar
+        </Button>
       ) : null}
     </div>
   );

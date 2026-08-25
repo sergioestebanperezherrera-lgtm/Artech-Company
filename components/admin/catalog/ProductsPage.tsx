@@ -121,12 +121,7 @@ function ProductFormDialog({
       setError("Selecciona una categoria activa.");
       return;
     }
-    if (product) {
-      if (values.slug.trim()) {
-        (input as Partial<AdminSaveProductInput>).slug =
-          slugifyInput(values.slug);
-      }
-    } else if (values.slug.trim()) {
+    if (!product && values.slug.trim()) {
       input.slug = slugifyInput(values.slug);
     }
 
@@ -199,6 +194,7 @@ function ProductFormDialog({
               value={values.slug}
               maxLength={120}
               placeholder="se genera desde el nombre"
+              readOnly={Boolean(product)}
               onChange={(event) => update("slug", event.target.value)}
             />
           </label>

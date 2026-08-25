@@ -8,15 +8,6 @@ import {
   canViewAdminItem,
 } from "./adminNavigation";
 
-const availableModuleHrefs = new Set([
-  "/admin/employees",
-  "/admin/shifts",
-  "/admin/attendance",
-  "/admin/sales",
-  "/admin/pos",
-  "/admin/cash",
-]);
-
 export function AdminDashboard() {
   const identity = useAdminIdentity();
   const firstName = identity.user.name.trim().split(/\s+/)[0] || "Admin";
@@ -41,7 +32,7 @@ export function AdminDashboard() {
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base sm:leading-7">
           Gestiona las operaciones internas de ARTECH desde un espacio centralizado.
-          Los modulos se habilitan segun tus permisos efectivos.
+          Los módulos se habilitan según tus permisos efectivos.
         </p>
       </header>
 
@@ -49,10 +40,10 @@ export function AdminDashboard() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 id="admin-quick-links" className="text-lg font-medium text-white">
-              Accesos rapidos
+              Accesos rápidos
             </h2>
             <p className="mt-1 text-sm text-white/45">
-              Modulos disponibles para tu cuenta.
+              Módulos disponibles para tu cuenta.
             </p>
           </div>
         </div>
@@ -94,10 +85,10 @@ export function AdminDashboard() {
 
       <section className="mt-12" aria-labelledby="admin-modules">
         <h2 id="admin-modules" className="text-lg font-medium text-white">
-          Modulos
+          Módulos
         </h2>
         <p className="mt-1 text-sm text-white/45">
-          Estado de las areas disponibles en esta fase.
+          Áreas disponibles para tu cuenta.
         </p>
 
         <div className="admin-module-list mt-5 divide-y divide-white/[0.07]">
@@ -119,7 +110,7 @@ export function AdminDashboard() {
                   <span className="truncate text-sm text-white/80">{item.label}</span>
                 </div>
                 <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-white/45">
-                  {availableModuleHrefs.has(item.href) ? "Disponible" : "Proximamente"}
+                  Disponible
                 </span>
               </div>
             );

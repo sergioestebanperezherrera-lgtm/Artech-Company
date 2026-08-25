@@ -9,7 +9,7 @@ import type { Product } from "@/lib/types";
 import { formatPrice, getProductPrice } from "@/lib/utils/formatPrice";
 import { cn } from "@/lib/utils/cn";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
-import { ProductImage } from "./ProductImage";
+import { ProductImage, getFirstUsableProductImage } from "./ProductImage";
 import { RgbLightingFrame } from "./RgbLightingFrame";
 
 type ProductCardProps = {
@@ -24,8 +24,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const addResetTimer = useRef<number | null>(null);
   const isOutOfStock = product.stock === 0;
   const price = formatPrice(getProductPrice(product, currency), currency);
-  const imagePlaceholder =
-    product.images[0] ?? "/placeholders/productos/producto.png";
+  const imageSrc = getFirstUsableProductImage(product.images);
   const productHref = `/producto/${product.slug}`;
 
   useEffect(() => {
@@ -77,9 +76,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </div>
 
         <div className="artech-product-card-image flex h-full items-center justify-center px-3 text-center text-[11px] leading-4 text-text-secondary-on-dark transition-transform duration-300 ease-out group-hover:scale-[1.025] motion-reduce:transition-none motion-reduce:group-hover:scale-100 sm:px-5 sm:text-xs sm:leading-5">
-          {/* IMAGEN PRODUCTO AQUÍ: reemplazar con archivo del cliente. */}
           <ProductImage
-            src={imagePlaceholder}
+            src={imageSrc}
             alt={product.name}
             className="h-full w-full"
           />

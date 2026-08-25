@@ -279,7 +279,7 @@ export function ShiftsPage() {
         <AdminModal
           open
           title={dialog.mode === "edit" ? "Editar turno" : "Nuevo turno"}
-          description="Los turnos definen horario y dias; la asistencia se implementara en otra fase."
+          description="Los turnos definen el horario y los dias de cada jornada laboral."
           onClose={closeDialog}
         >
           <form className="space-y-5" onSubmit={handleSubmit}>

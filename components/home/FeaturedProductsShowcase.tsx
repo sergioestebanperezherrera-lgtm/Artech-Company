@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ScrollReveal } from "@/components/motion";
-import { ProductImage } from "@/components/product/ProductImage";
+import {
+  ProductImage,
+  getFirstUsableProductImage,
+} from "@/components/product/ProductImage";
 import { RgbLightingFrame } from "@/components/product/RgbLightingFrame";
 import type { Category, Product } from "@/lib/types";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
@@ -24,8 +27,8 @@ const spotlightLabels: Record<SpotlightReason, string> = {
   monthlyBestSeller: "Más vendido del mes",
 };
 
-function getProductImageLabel(product: Product) {
-  return product.images[0] ?? "/placeholders/productos/producto.png";
+function getProductImageSrc(product: Product) {
+  return getFirstUsableProductImage(product.images);
 }
 
 function getProductLighting(product: Product) {
@@ -204,7 +207,7 @@ export function FeaturedProductsShowcase({
 
                   <div className="artech-featured-product-stage mt-6 flex flex-1 items-center justify-center rounded-card">
                     <ProductImage
-                      src={getProductImageLabel(spotlightProduct)}
+                      src={getProductImageSrc(spotlightProduct)}
                       alt={spotlightProduct.name}
                       sizes="(max-width: 640px) 82vw, (max-width: 1024px) 50vw, 520px"
                       className="relative z-10 h-full w-full max-w-[92%] text-xs leading-5 text-text-secondary-on-dark"
@@ -266,7 +269,7 @@ export function FeaturedProductsShowcase({
 
                       <div className="artech-featured-product-stage mt-4 flex flex-1 items-center justify-center rounded-image-inset">
                         <ProductImage
-                          src={getProductImageLabel(product)}
+                          src={getProductImageSrc(product)}
                           alt={product.name}
                           sizes="(max-width: 640px) 78vw, (max-width: 1024px) 38vw, 220px"
                           className="relative z-10 h-full w-full max-w-[92%] text-[11px] leading-4 text-text-secondary-on-dark"

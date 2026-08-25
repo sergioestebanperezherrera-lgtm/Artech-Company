@@ -89,6 +89,56 @@ async function createPage(browser) {
   return { context, page };
 }
 
+async function mockAuthApi(page) {
+  let session = null;
+
+  await page.route("**/api/auth/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+
+    if (path.endsWith("/me")) {
+      await route.fulfill({
+        status: session ? 200 : 401,
+        contentType: "application/json",
+        body: JSON.stringify(session ?? { message: "Authentication required." }),
+      });
+      return;
+    }
+
+    if (path.endsWith("/logout")) {
+      session = null;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Logged out." }),
+      });
+      return;
+    }
+
+    if (path.endsWith("/login") || path.endsWith("/register")) {
+      const input = request.postDataJSON();
+      session = {
+        user: {
+          id: path.endsWith("/register") ? "user-register-e2e" : "user-login-e2e",
+          name: input.name ?? "Cliente Artech",
+          email: input.email,
+          emailVerified: false,
+        },
+        roles: [],
+        permissions: [],
+      };
+      await route.fulfill({
+        status: path.endsWith("/register") ? 201 : 200,
+        contentType: "application/json",
+        body: JSON.stringify(session),
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+}
+
 async function runTest(name, callback) {
   await callback();
   console.log(`OK ${name}`);
@@ -154,8 +204,9 @@ try {
     await context.close();
   });
 
-  await runTest("login y registro mock", async () => {
+  await runTest("login y registro", async () => {
     const { context, page } = await createPage(browser);
+    await mockAuthApi(page);
     await page.goto(baseUrl);
     await page.getByRole("button", { name: "Cuenta" }).click();
     await page.getByRole("dialog", { name: /Autenticación/i }).waitFor({
@@ -216,6 +267,11 @@ try {
     await page.getByRole("button", { name: /Más información/i }).first().click();
     await page.waitForURL(/\/producto\/aura-x1/);
     await page.getByRole("heading", { name: "Aura X1" }).waitFor({ state: "visible" });
+    await page.locator('img[alt="Aura X1"]').first().waitFor({ state: "visible" });
+    assert(
+      (await page.getByText(/\[IMAGEN/i).count()) === 0,
+      "El detalle no debe mostrar etiquetas de imagen pendientes.",
+    );
     await context.close();
   });
 } finally {

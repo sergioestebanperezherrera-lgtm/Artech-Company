@@ -1,7 +1,10 @@
 "use client";
 
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { ProductImage } from "@/components/product/ProductImage";
+import {
+  ProductImage,
+  getFirstUsableProductImage,
+} from "@/components/product/ProductImage";
 import { IconCircleButton } from "@/components/ui";
 import type { ResolvedCartItem } from "@/lib/utils/cart";
 import { formatPrice } from "@/lib/utils/formatPrice";
@@ -20,18 +23,16 @@ export function CartItem({
   onUpdateQuantity,
   onRemove,
 }: CartItemProps) {
-  const image = item.product.images[0] ?? "/placeholders/productos/producto.png";
+  const image = getFirstUsableProductImage(item.product.images);
 
   return (
     <article className="grid grid-cols-[72px_1fr] gap-3 rounded-card border border-border-on-light p-3">
       <div className="flex aspect-square items-center justify-center rounded-image-inset bg-surface-card-inset px-2 text-center text-[10px] leading-4 text-text-secondary-on-dark">
-        {/* IMAGEN CARRITO AQUÍ: reemplazar con archivo del cliente. */}
         <ProductImage
           src={image}
           alt={item.product.name}
           className="h-full w-full"
           sizes="72px"
-          placeholderText="[IMG]"
         />
       </div>
       <div className="min-w-0">

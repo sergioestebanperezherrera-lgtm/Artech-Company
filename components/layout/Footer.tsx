@@ -1,10 +1,5 @@
-"use client";
-
-import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { LogoMark } from "@/components/brand";
-import { getButtonClassName } from "@/components/ui";
 
 const footerSections = [
   {
@@ -23,30 +18,14 @@ const footerSections = [
     links: [
       { label: "Cuenta", href: "/cuenta" },
       { label: "Carrito", href: "/carrito" },
-      { label: "Newsletter", href: "#newsletter" },
     ],
   },
 ];
 
-const socialLinks: Array<{ label: string; href: string | null }> = [
-  { label: "Instagram", href: null },
-  { label: "Facebook", href: null },
-  { label: "X", href: null },
-];
-
 export function Footer() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-
-  const handleNewsletterSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage("Registro recibido.");
-    setEmail("");
-  };
-
   return (
     <footer className="artech-footer relative z-10 px-4 py-12 text-text-primary-on-dark sm:px-6 lg:py-16">
-      <div className="artech-footer-content mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.3fr_0.8fr_0.8fr_1.1fr]">
+      <div className="artech-footer-content mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.3fr_0.8fr_0.8fr]">
         <div>
           <Link
             href="/"
@@ -79,63 +58,9 @@ export function Footer() {
             </nav>
           </div>
         ))}
-
-        <form id="newsletter" onSubmit={handleNewsletterSubmit}>
-          <h2 className="text-sm font-medium text-text-primary-on-dark">
-            Newsletter
-          </h2>
-          <label className="mt-4 grid gap-2 text-sm text-text-secondary-on-dark">
-            Correo
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="tu@email.com"
-              className="artech-footer-input h-10 rounded-input px-3 text-text-primary-on-dark placeholder:text-text-secondary-on-dark"
-            />
-          </label>
-          <button
-            type="submit"
-            className={getButtonClassName(
-              "primary-on-dark",
-              "artech-footer-submit mt-3 min-h-9 px-4",
-            )}
-          >
-            Suscribirme
-            <ArrowRight size={16} strokeWidth={1.7} aria-hidden="true" />
-          </button>
-          {message ? (
-            <p className="mt-3 text-sm text-text-secondary-on-dark" role="status">
-              {message}
-            </p>
-          ) : null}
-        </form>
       </div>
-      <div className="artech-footer-bottom mx-auto mt-10 flex max-w-6xl flex-col gap-3 pt-6 text-sm text-text-secondary-on-dark sm:flex-row sm:items-center sm:justify-between">
+      <div className="artech-footer-bottom mx-auto mt-10 max-w-6xl pt-6 text-sm text-text-secondary-on-dark">
         <p>© 2026 Artech. Todos los derechos reservados.</p>
-        <div className="flex gap-4" aria-label="Redes sociales">
-          {socialLinks.map((social) =>
-            social.href ? (
-              <Link
-                key={social.label}
-                href={social.href}
-                className="artech-footer-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
-              >
-                {social.label}
-              </Link>
-            ) : (
-              <span
-                key={social.label}
-                aria-disabled="true"
-                title="URL oficial pendiente"
-                className="cursor-default text-text-secondary-on-dark/70"
-              >
-                {social.label}
-              </span>
-            ),
-          )}
-        </div>
       </div>
     </footer>
   );

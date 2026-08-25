@@ -349,6 +349,38 @@ test("product listing exposes shared stock with filters", async () => {
   assert.ok(categoryItems.every((item) => item.isActive));
 });
 
+test("inactive categories hide their active products from the public catalog", async () => {
+  const product = await prisma.product.create({
+    data: {
+      name: `Producto oculto ${runId}`,
+      sku: `HIDDEN-${runId.slice(0, 8)}`.toUpperCase(),
+      slug: `producto-oculto-${runId}`,
+      description: "Producto activo en una categoria inactiva",
+      price: "100.00",
+      categoryId: inactiveCategoryId,
+      isActive: true,
+    },
+    select: { id: true, slug: true, sku: true },
+  });
+  productIds.add(product.id);
+
+  const publicList = await api("/api/products");
+  assert.equal(publicList.status, 200);
+  const products = (await publicList.json()) as Array<{ id: string }>;
+  assert.ok(!products.some((item) => item.id === product.id));
+
+  const publicDetail = await api(`/api/products/${product.slug}`);
+  assert.equal(publicDetail.status, 404);
+
+  const adminList = await api(
+    `/api/admin/products?search=${encodeURIComponent(product.sku)}`,
+    { cookie: adminCookie },
+  );
+  assert.equal(adminList.status, 200);
+  const adminProducts = (await adminList.json()) as Array<{ id: string }>;
+  assert.ok(adminProducts.some((item) => item.id === product.id));
+});
+
 test("product update edits fields and deactivation keeps public history intact", async () => {
   const created = await api("/api/admin/products", {
     method: "POST",

@@ -46,6 +46,9 @@ export async function findActiveProducts() {
   return prisma.product.findMany({
     where: {
       isActive: true,
+      category: {
+        isActive: true,
+      },
     },
     include: productInclude,
     orderBy: [
@@ -64,6 +67,9 @@ export async function findActiveProductBySlug(slug: string) {
     where: {
       slug,
       isActive: true,
+      category: {
+        isActive: true,
+      },
     },
     include: productInclude,
   });

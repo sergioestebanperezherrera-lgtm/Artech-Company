@@ -18,8 +18,8 @@ const trustItems = [
     icon: Headset,
   },
   {
-    title: "Pago seguro",
-    description: "Flujo visual preparado para checkout futuro.",
+    title: "Compra clara",
+    description: "Carrito claro para revisar productos, cantidades y subtotal.",
     icon: CreditCard,
   },
 ];

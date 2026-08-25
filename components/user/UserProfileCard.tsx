@@ -25,7 +25,7 @@ export function UserProfileCard({ user }: UserProfileCardProps) {
           </p>
         </div>
         <p className="text-sm leading-6 text-text-secondary-on-light">
-          La edición de perfil se conectará al backend en una fase posterior.
+          Información asociada a tu cuenta de Artech.
         </p>
       </div>
     </Card>

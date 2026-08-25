@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MapPin, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { Button, Card, getButtonClassName } from "@/components/ui";
 import { authService } from "@/lib/services/authService";
 import { useAuthStore } from "@/lib/stores/useAuthStore";
-import { OrdersEmptyState } from "./OrdersEmptyState";
 import { UserProfileCard } from "./UserProfileCard";
 
 export function AccountView() {
@@ -131,21 +130,8 @@ export function AccountView() {
           </Link>
         </header>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <UserProfileCard user={user} />
-          <OrdersEmptyState />
-          <Card className="p-6">
-            <MapPin
-              aria-hidden="true"
-              className="text-text-secondary-on-light"
-              size={32}
-              strokeWidth={1.5}
-            />
-            <h2 className="mt-4 text-xl font-medium">Direcciones guardadas</h2>
-            <p className="mt-3 text-sm leading-6 text-text-secondary-on-light">
-              La gestión de direcciones se conectará en una fase posterior.
-            </p>
-          </Card>
           <Card className="flex flex-col justify-between gap-5 p-6">
             <div>
               <h2 className="text-xl font-medium">Sesión</h2>

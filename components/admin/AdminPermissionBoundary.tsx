@@ -21,10 +21,10 @@ export function AdminPermissionBoundary({
       <section className="admin-state-panel max-w-2xl px-6 py-8 sm:px-8">
         <p className="text-xs font-medium uppercase text-white/40">Artech Admin</p>
         <h1 className="mt-4 text-2xl font-medium text-white">
-          Modulo no disponible
+          Módulo no disponible
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-6 text-white/55">
-          Esta seccion no esta habilitada para tu cuenta.
+          Esta sección no está habilitada para tu cuenta.
         </p>
         <Link
           href="/admin"

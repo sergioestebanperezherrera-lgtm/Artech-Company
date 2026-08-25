@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ProductImage } from "@/components/product/ProductImage";
+import {
+  ProductImage,
+  getFirstUsableProductImage,
+} from "@/components/product/ProductImage";
 import { Badge, IconCircleButton } from "@/components/ui";
 import type { Product } from "@/lib/types";
 import { useCurrencyStore } from "@/lib/stores/useCurrencyStore";
@@ -154,8 +157,7 @@ export function HeroSection({ products }: HeroSectionProps) {
           <div className="flex touch-pan-y">
             {slides.map((product, index) => {
               const price = formatPrice(getProductPrice(product, currency), currency);
-              const imagePlaceholder =
-                product.images[0] ?? "/placeholders/productos/producto.png";
+              const imageSrc = getFirstUsableProductImage(product.images);
 
               return (
                 <div
@@ -201,9 +203,8 @@ export function HeroSection({ products }: HeroSectionProps) {
 
                       <div className="artech-offer-media-wrap p-3 lg:p-4">
                         <div className="artech-offer-product-stage flex h-full min-h-[240px] items-center justify-center rounded-image-inset px-6 text-center text-sm leading-6 sm:min-h-[320px]">
-                          {/* IMAGEN BANNER HERO AQUI: reemplazar con archivo del cliente. */}
                           <ProductImage
-                            src={imagePlaceholder}
+                            src={imageSrc}
                             alt={product.name}
                             loading={index === 0 ? "eager" : "lazy"}
                             priority={index === 0}

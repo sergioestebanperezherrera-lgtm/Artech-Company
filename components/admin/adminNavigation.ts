@@ -8,8 +8,6 @@ import {
   LayoutDashboard,
   PackageSearch,
   ReceiptText,
-  ScrollText,
-  ShieldCheck,
   Tags,
   UsersRound,
   type LucideIcon,
@@ -119,30 +117,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
       },
     ],
   },
-  {
-    label: "Sistema",
-    items: [
-      {
-        label: "Seguridad",
-        href: "/admin/security",
-        slug: "security",
-        permission: "role.read",
-        icon: ShieldCheck,
-      },
-      {
-        label: "Auditoría",
-        href: "/admin/audit",
-        slug: "audit",
-        permission: "audit.read",
-        icon: ScrollText,
-      },
-    ],
-  },
 ];
-
-export const adminModuleItems = adminNavigationGroups
-  .flatMap((group) => group.items)
-  .filter((item) => item.slug);
 
 export function canViewAdminItem(
   item: AdminNavigationItem,
@@ -168,8 +143,4 @@ export function getAdminItemByPath(pathname: string) {
         item.href === pathname ||
         (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)),
     );
-}
-
-export function getAdminItemBySlug(slug: string) {
-  return adminModuleItems.find((item) => item.slug === slug);
 }
