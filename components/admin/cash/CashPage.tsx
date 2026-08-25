@@ -81,6 +81,7 @@ function CashSummaryCard({
 
 export function CashPage() {
   const identity = useAdminIdentity();
+  const canRead = identity.permissions.includes("cash.read");
   const canOpen = identity.permissions.includes("cash.open");
   const canMove = identity.permissions.includes("cash.move");
   const canClose = identity.permissions.includes("cash.close");
@@ -108,6 +109,12 @@ export function CashPage() {
   );
 
   const loadCash = useCallback(async (signal?: AbortSignal) => {
+    if (!canRead) {
+      setIsLoading(false);
+      setError("");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
 
@@ -127,7 +134,7 @@ export function CashPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [canRead]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -311,7 +318,7 @@ export function CashPage() {
             <RefreshCw aria-hidden="true" size={16} />
             Actualizar
           </Button>
-          {canOpen ? (
+          {canRead && canOpen ? (
             <Button
               variant="primary-on-dark"
               className="rounded-lg"
@@ -380,7 +387,18 @@ export function CashPage() {
         </section>
       ) : null}
 
-      {!error && !isLoading ? (
+      {!canRead && !isLoading ? (
+        <section className="admin-empty-panel mt-3 px-5 py-7">
+          <p className="text-sm font-medium text-white">Caja requiere permiso de lectura.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">
+            La arquitectura actual exige `cash.read` para ver cajas y sesiones.
+            Un usuario con `cash.open` sin `cash.read` no puede operar caja desde
+            esta pantalla porque no podria seleccionar ni verificar una sesion.
+          </p>
+        </section>
+      ) : null}
+
+      {canRead && !error && !isLoading ? (
         <>
           <section className="admin-panel mt-3 p-4 sm:p-5">
             <div className="flex items-start gap-3">

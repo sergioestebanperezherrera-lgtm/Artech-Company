@@ -549,6 +549,23 @@ try {
     await context.close();
   });
 
+  await runTest("cash.open sin cash.read no monta caja incoherente", async () => {
+    const state = makeState();
+    let cashRequests = 0;
+    const { context, page } = await createPage(browser);
+    await mockApi(page, state, ["cash.open"]);
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/api/admin/cash/")) {
+        cashRequests += 1;
+      }
+    });
+
+    await page.goto(`${baseUrl}/admin/cash`);
+    await page.getByRole("heading", { name: "Modulo no disponible" }).waitFor();
+    assert(cashRequests === 0, "cash.open sin cash.read no debe cargar endpoints de caja.");
+    await context.close();
+  });
+
   for (const width of [375, 1440]) {
     await runTest(`responsive caja/POS/ventas ${width}px`, async () => {
       const state = makeState();

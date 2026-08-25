@@ -3,7 +3,6 @@
 import {
   CSSProperties,
   FormEvent,
-  PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -110,20 +109,6 @@ export function Navbar({ products, categories, brands }: NavbarProps) {
     window.dispatchEvent(new CustomEvent("artech:cart-open"));
   };
 
-  const handleGlassPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - bounds.left) / bounds.width) * 100;
-    const y = ((event.clientY - bounds.top) / bounds.height) * 100;
-
-    event.currentTarget.style.setProperty("--glass-x", `${x.toFixed(2)}%`);
-    event.currentTarget.style.setProperty("--glass-y", `${y.toFixed(2)}%`);
-  };
-
-  const handleGlassPointerLeave = (event: ReactPointerEvent<HTMLElement>) => {
-    event.currentTarget.style.setProperty("--glass-x", "50%");
-    event.currentTarget.style.setProperty("--glass-y", "0%");
-  };
-
   useEffect(() => {
     if (!isSearchOpen) {
       return;
@@ -223,8 +208,6 @@ export function Navbar({ products, categories, brands }: NavbarProps) {
     "--glass-edge-soft-opacity": "0.2",
     "--glass-edge-strong-opacity": "0.34",
     "--glass-edge-opacity": "0.38",
-    "--glass-x": "50%",
-    "--glass-y": "0%",
   } as CSSProperties;
 
   return (
@@ -234,8 +217,6 @@ export function Navbar({ products, categories, brands }: NavbarProps) {
         data-scrolled={hasScrolled ? "true" : "false"}
         style={glassStyle}
         className="hero-materialize artech-liquid-glass artech-navbar-glass sticky top-0 z-50"
-        onPointerLeave={handleGlassPointerLeave}
-        onPointerMove={handleGlassPointerMove}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
