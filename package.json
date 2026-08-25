@@ -12,7 +12,8 @@
     "test:admin-e2e": "node tests/admin.e2e.mjs",
     "test:admin-employees-e2e": "node tests/admin-employees.e2e.mjs",
     "test:admin-attendance-e2e": "node tests/admin-attendance.e2e.mjs",
-    "test:admin-cash-pos-e2e": "node tests/admin-cash-pos.e2e.mjs"
+    "test:admin-cash-pos-e2e": "node tests/admin-cash-pos.e2e.mjs",
+    "test:admin-inventory-e2e": "node tests/admin-inventory.e2e.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

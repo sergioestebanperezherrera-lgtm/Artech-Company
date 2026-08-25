@@ -71,3 +71,13 @@ export type {
   UpdateShiftInput,
   Weekday,
 } from "./employee";
+export type {
+  CreateInventoryMovementInput,
+  InventoryFilters,
+  InventoryItem,
+  InventoryMovement,
+  InventoryMovementDirection,
+  InventoryMovementFilters,
+  InventoryMovementType,
+  InventoryStockStatus,
+} from "./inventory";

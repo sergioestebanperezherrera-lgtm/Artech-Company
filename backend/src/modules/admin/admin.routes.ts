@@ -11,6 +11,7 @@ import shiftRoutes from "../shifts/shifts.routes";
 import attendanceRoutes from "../attendance/attendance.routes";
 import cashRoutes from "../cash/cash.routes";
 import posRoutes from "../pos/pos.routes";
+import inventoryRoutes from "../inventory/inventory.routes";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/attendance", attendanceRoutes);
 router.use("/cash", cashRoutes);
 router.use("/pos", posRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/inventory", inventoryRoutes);
 
 export default router;

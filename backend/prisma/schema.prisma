@@ -121,6 +121,7 @@ model User {
   openedCashSessions        CashSession[]      @relation("CashSessionOpenedBy")
   closedCashSessions        CashSession[]      @relation("CashSessionClosedBy")
   cashMovements             CashMovement[]
+  inventoryMovements        InventoryMovement[]
 }
 
 model AuthAccount {
@@ -465,16 +466,19 @@ model InventoryMovement {
   quantity   Int
   reference  String?
   note       String?
+  createdByUserId String?
   occurredAt DateTime                   @default(now())
 
   product Product @relation(fields: [productId], references: [id])
   sale    Sale?   @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  createdBy User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([saleId])
   @@index([type])
   @@index([direction])
   @@index([occurredAt])
+  @@index([createdByUserId])
 }
 
 model Sale {
