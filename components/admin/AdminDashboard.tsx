@@ -12,6 +12,9 @@ const availableModuleHrefs = new Set([
   "/admin/employees",
   "/admin/shifts",
   "/admin/attendance",
+  "/admin/sales",
+  "/admin/pos",
+  "/admin/cash",
 ]);
 
 export function AdminDashboard() {

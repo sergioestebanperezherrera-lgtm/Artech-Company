@@ -18,6 +18,24 @@ export type { CartItem } from "./cart";
 export type { Category } from "./category";
 export type { Order } from "./order";
 export type { Currency, Product, ProductSpec } from "./product";
+export type {
+  CashMovementType,
+  CashRegister,
+  CashSession,
+  CashSessionMovement,
+  CashSessionSaleSummary,
+  CashSessionStatus,
+  CloseCashSessionInput,
+  CreateCashMovementInput,
+  CreateCashRegisterInput,
+  CreatePosSaleInput,
+  OpenCashSessionInput,
+  PosCartItem,
+  PosPayment,
+  PosPaymentMethod,
+  PosSale,
+  PosSaleItem,
+} from "./cashPos";
 export type { User } from "./user";
 export type {
   CompensationCurrency,

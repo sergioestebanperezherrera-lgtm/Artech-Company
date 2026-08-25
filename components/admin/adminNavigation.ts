@@ -2,6 +2,7 @@ import {
   Boxes,
   CalendarCheck,
   Clock3,
+  MonitorCog,
   HandCoins,
   Landmark,
   LayoutDashboard,
@@ -93,6 +94,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         slug: "sales",
         permission: "sale.read",
         icon: ReceiptText,
+      },
+      {
+        label: "POS",
+        href: "/admin/pos",
+        slug: "pos",
+        permission: "sale.pos_create",
+        icon: MonitorCog,
       },
       {
         label: "Caja",
