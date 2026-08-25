@@ -752,8 +752,13 @@ export async function deleteEmployeeRecord(id: string) {
       }
 
       const employmentIds = employee.employments.map((employment) => employment.id);
-      const [attendanceCount, compensationCount, shiftAssignmentCount, saleCount] =
-        await Promise.all([
+      const [
+        attendanceCount,
+        compensationCount,
+        shiftAssignmentCount,
+        saleCount,
+        cashSessionCount,
+      ] = await Promise.all([
           transaction.attendanceRecord.count({
             where: { employeeId: id },
           }),
@@ -765,6 +770,9 @@ export async function deleteEmployeeRecord(id: string) {
           }),
           transaction.sale.count({
             where: { employeeId: id },
+          }),
+          transaction.cashSession.count({
+            where: { employmentId: { in: employmentIds } },
           }),
         ]);
 
@@ -789,6 +797,12 @@ export async function deleteEmployeeRecord(id: string) {
       if (saleCount > 0) {
         throw new AppError(
           "Employees with sales history cannot be deleted. Deactivate them instead.",
+          409,
+        );
+      }
+      if (cashSessionCount > 0) {
+        throw new AppError(
+          "Employees with cash session history cannot be deleted. Deactivate them instead.",
           409,
         );
       }
