@@ -37,6 +37,18 @@ function parsePositiveInteger(
   return parsed;
 }
 
+function parseTimeZone(value: string | undefined) {
+  const timeZone = value?.trim() || "America/Guatemala";
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
+  } catch {
+    throw new Error("BUSINESS_TIME_ZONE must be a valid IANA time zone.");
+  }
+
+  return timeZone;
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: parsePort(process.env.PORT),
@@ -54,4 +66,5 @@ export const env = {
   googleRedirectUri:
     process.env.GOOGLE_REDIRECT_URI ??
     "http://localhost:4000/api/auth/google/callback",
+  businessTimeZone: parseTimeZone(process.env.BUSINESS_TIME_ZONE),
 };

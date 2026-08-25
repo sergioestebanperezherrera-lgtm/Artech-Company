@@ -84,6 +84,13 @@ enum Weekday {
   SUNDAY
 }
 
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -94,11 +101,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  authAccounts AuthAccount[]
-  sessions     Session[]
-  roles        UserRole[]
-  employee     Employee?
-  sales        Sale[]        @relation("CustomerSales")
+  authAccounts              AuthAccount[]
+  sessions                  Session[]
+  roles                     UserRole[]
+  employee                  Employee?
+  adjustedAttendanceRecords AttendanceRecord[]
+  sales                     Sale[]             @relation("CustomerSales")
 }
 
 model AuthAccount {
@@ -141,9 +149,10 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   employments Employment[]
-  sales       Sale[]       @relation("EmployeeSales")
+  attendance  AttendanceRecord[]
+  sales       Sale[]             @relation("EmployeeSales")
 
   @@index([isActive])
 }
@@ -177,6 +186,7 @@ model Employment {
   position            Position             @relation(fields: [positionId], references: [id], onDelete: Restrict)
   compensationPeriods CompensationPeriod[]
   shiftAssignments    ShiftAssignment[]
+  attendanceRecords   AttendanceRecord[]
 
   @@index([employeeId])
   @@index([positionId])
@@ -239,13 +249,54 @@ model ShiftAssignment {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  employment Employment @relation(fields: [employmentId], references: [id], onDelete: Restrict)
-  shift      Shift      @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  employment Employment         @relation(fields: [employmentId], references: [id], onDelete: Restrict)
+  shift      Shift              @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  attendance AttendanceRecord[]
 
   @@index([employmentId])
   @@index([shiftId])
   @@index([employmentId, effectiveFrom])
   @@index([employmentId, effectiveTo])
+}
+
+model AttendanceRecord {
+  id String @id @default(cuid())
+
+  employeeId        String
+  employmentId      String
+  shiftAssignmentId String?
+  workDate          DateTime @db.Date
+
+  expectedShiftName       String?
+  expectedShiftType       ShiftType?
+  expectedStartTime       DateTime?  @db.Time(0)
+  expectedEndTime         DateTime?  @db.Time(0)
+  expectedCrossesMidnight Boolean?
+
+  clockInAt  DateTime?
+  clockOutAt DateTime?
+
+  status           AttendanceStatus
+  lateMinutes      Int              @default(0)
+  notes            String?
+  adjustedByUserId String?
+  adjustmentReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  employment      Employment       @relation(fields: [employmentId], references: [id], onDelete: Restrict)
+  shiftAssignment ShiftAssignment? @relation(fields: [shiftAssignmentId], references: [id], onDelete: SetNull)
+  adjustedBy      User?            @relation(fields: [adjustedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([employmentId, workDate])
+  @@index([employeeId])
+  @@index([employeeId, workDate])
+  @@index([workDate])
+  @@index([status])
+  @@index([shiftAssignmentId])
+  @@index([adjustedByUserId])
 }
 
 model Role {

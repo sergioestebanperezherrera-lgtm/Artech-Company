@@ -9,6 +9,7 @@ import {
   createShiftAssignmentController,
   getEmployeeShiftsController,
 } from "../shifts/shifts.controller";
+import { listEmployeeAttendanceController } from "../attendance/attendance.controller";
 import {
   changeEmployeePositionController,
   createEmployeeController,
@@ -50,6 +51,11 @@ router.post(
   "/:employeeId/shifts",
   requirePermission("shift.manage"),
   asyncHandler(createShiftAssignmentController),
+);
+router.get(
+  "/:employeeId/attendance",
+  requirePermission("attendance.read"),
+  asyncHandler(listEmployeeAttendanceController),
 );
 router.get(
   "/:id",

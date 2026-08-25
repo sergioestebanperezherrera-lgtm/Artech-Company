@@ -8,6 +8,7 @@ import employeeRoutes from "../employees/employees.routes";
 import positionRoutes from "../employees/positions.routes";
 import { adminMeController } from "./admin.controller";
 import shiftRoutes from "../shifts/shifts.routes";
+import attendanceRoutes from "../attendance/attendance.routes";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.get(
 );
 router.use("/positions", positionRoutes);
 router.use("/shifts", shiftRoutes);
+router.use("/attendance", attendanceRoutes);
 router.use("/employees", employeeRoutes);
 
 export default router;
